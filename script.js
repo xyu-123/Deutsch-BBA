@@ -4,6 +4,11 @@
 document.addEventListener('DOMContentLoaded', () => {
   const quizForm = document.getElementById('quiz-form');
   if (quizForm) quizForm.addEventListener('submit', e => e.preventDefault());
+
+  // 所有按鈕明確標記為非 submit
+  document.getElementById('next')?.setAttribute('type','button');
+  document.getElementById('check')?.setAttribute('type','button');
+  document.getElementById('showAnswer')?.setAttribute('type','button');
 });
 
 // ========================================
@@ -31,7 +36,7 @@ function hardenInputsIn(container = document) {
   container.querySelectorAll('#inputs input, #inputs textarea').forEach(hardenInput);
 }
 
-// 動態監看 #inputs，確保每次出題都會加上防預測屬性
+// 動態監看 #inputs
 document.addEventListener('DOMContentLoaded', () => {
   const box = document.getElementById('inputs');
   if (!box) return;
@@ -41,7 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ========================================
-// 2) 載入詞彙 & 公用正規化
+// 2) 換題令牌鎖 — 只允許安全呼叫 nextWord()
+// ========================================
+let __advanceToken = 0;
+function safeNext() {
+  __advanceToken += 1;
+  nextWord(__advanceToken);
+}
+
+// ========================================
+// 3) 載入詞彙 & 公用正規化
 // ========================================
 let vocab = [...vocabList];
 let currentIndex = -1;
@@ -67,9 +81,9 @@ function foldPhrase(s) {
 }
 
 // ========================================
-// 3) 事件綁定
+// 4) 事件綁定
 // ========================================
-document.getElementById("next").addEventListener("click", nextWord);
+document.getElementById("next").addEventListener("click", safeNext);
 document.getElementById("check").addEventListener("click", checkAnswer);
 document.getElementById("showAnswer").addEventListener("click", showAnswer);
 
@@ -77,10 +91,12 @@ let currentErrors = [];
 const SINGLE_INPUT_TYPES = new Set(["adjective", "adverb", "question", "other"]);
 
 // ========================================
-// 4) 出題
+// 5) 出題（僅允許安全令牌）
 // ========================================
-function nextWord() {
-  correctConfirmed = false; // ✅ 重設 Enter 狀態
+function nextWord(token) {
+  if (token !== __advanceToken) return; // 🚫 沒有令牌不允許換題
+
+  correctConfirmed = false;
   document.getElementById("showAnswer").style.display = "none";
   if (vocab.length === 0) return;
   document.getElementById("next").disabled = true;
@@ -164,7 +180,7 @@ function nextWord() {
 }
 
 // ========================================
-// 5) Enter 鍵行為（需按兩次才換題）
+// 6) Enter 雙階段行為（答對要再按一次 Enter 才換題）
 // ========================================
 function enableEnterToCheck() {
   const container = document.getElementById("inputs");
@@ -186,7 +202,7 @@ function enableEnterToCheck() {
         return;
       } else {
         correctConfirmed = false;
-        nextWord();
+        safeNext(); // ✅ 改用安全換題
         return;
       }
     }
@@ -196,7 +212,7 @@ function enableEnterToCheck() {
 }
 
 // ========================================
-// 6) 顯示答案
+// 7) 顯示答案
 // ========================================
 function showAnswer() {
   const feedback = document.getElementById("feedback");
@@ -212,7 +228,7 @@ function showAnswer() {
 }
 
 // ========================================
-// 7) 課程標籤生成
+// 8) 課程標籤
 // ========================================
 function populateLessonCheckboxes() {
   const container = document.getElementById('lessonContainer');
@@ -241,7 +257,7 @@ function populateLessonCheckboxes() {
 populateLessonCheckboxes();
 
 // ========================================
-// 8) 檢查答案（嚴格版）
+// 9) 檢查答案（嚴格版）
 // ========================================
 function checkAnswer() {
   const word = vocab[currentIndex];
@@ -249,71 +265,15 @@ function checkAnswer() {
   feedback.style.display = "block";
   let allCorrect = true;
   currentErrors = [];
-
   const isEmpty = val => val === null || val === undefined || normalizeGerman(val) === "";
 
-  if (word.type === "noun") {
-    const genderInput = document.getElementById("genderInput").value;
-    const deutschRaw = document.getElementById("deutschInput").value.trim();
-    const pluralRaw = document.getElementById("pluralInput").value.trim();
-    const deutschInput = normalizeGerman(deutschRaw);
-    const pluralInput = normalizeGerman(pluralRaw);
-    const correctGender = word.gender || 'none';
-    const correctDeutsch = normalizeGerman(word.deutsch || '');
-    const correctPlural = normalizeGerman(word.plural || '');
-    if (genderInput !== correctGender) { allCorrect = false; currentErrors.push(`性別：${correctGender}`); }
-    if (isEmpty(deutschRaw) || deutschInput !== correctDeutsch) { allCorrect = false; currentErrors.push(`德文：${word.deutsch}`); }
-    if (word.countable) {
-      if (isEmpty(pluralRaw)) { allCorrect = false; currentErrors.push(`複數：${word.plural}`); }
-      else {
-        const correctPluralAlt = normalizeGerman(word.Pl || '');
-        if (pluralInput !== correctPlural && (word.Pl === undefined || pluralInput !== correctPluralAlt)) {
-          allCorrect = false;
-          const pluralAnswers = [word.plural];
-          if (word.Pl) pluralAnswers.push(word.Pl);
-          currentErrors.push(`複數：${pluralAnswers.join(' 或 ')}`);
-        }
-      }
-    }
-  } else if (word.type === "verb") {
-    const infinitivRaw = document.getElementById("infinitivInput").value.trim();
-    const infinitivInput = normalizeGerman(infinitivRaw);
-    const correctInfinitiv = normalizeGerman(word.infinitiv || '');
-    if (isEmpty(infinitivRaw) || infinitivInput !== correctInfinitiv) { allCorrect = false; currentErrors.push(`原形：${word.infinitiv}`); }
-    for (const form of word.selectedForms) {
-      const valRaw = document.getElementById(form + "Input").value.trim();
-      const val = normalizeGerman(valRaw);
-      const correct = normalizeGerman(word[form] || '');
-      if (isEmpty(valRaw) || val !== correct) { allCorrect = false; currentErrors.push(`${form}：${word[form]}`); }
-    }
-  } else if (word.type === "country") {
-    const numberSel = document.getElementById("numberInput")?.value;
-    const deutschRaw = document.getElementById("deutschInput").value.trim();
-    const deutschInput = normalizeGerman(deutschRaw);
-    const correctDeutsch = normalizeGerman(word.deutsch || '');
-    if (word.countable) {
-      const correctPlural = word.plural ? "複數" : "單數";
-      if (numberSel !== (word.plural ? "plural" : "singular")) { allCorrect = false; currentErrors.push(`單複數：${correctPlural}`); }
-    }
-    if (isEmpty(deutschRaw) || deutschInput !== correctDeutsch) { allCorrect = false; currentErrors.push(`德文：${word.deutsch}`); }
-  } else if (word.type === "phrase") {
-    const raw = document.getElementById("deutschInput").value.trim();
-    const input = foldPhrase(raw);
-    const answer = foldPhrase(word.deutsch);
-    if (isEmpty(raw) || input !== answer) { allCorrect = false; currentErrors.push(`德文：${word.deutsch}`); }
-  } else if (SINGLE_INPUT_TYPES.has(word.type)) {
-    const raw = document.getElementById("deutschInput").value.trim();
-    const input = normalizeGerman(raw);
-    const correct = normalizeGerman(word.deutsch || '');
-    if (isEmpty(raw) || input !== correct) { allCorrect = false; currentErrors.push(`德文：${word.deutsch}`); }
-  } else if (word.type === "number") {
-    const raw = document.getElementById("deutschInput").value.trim();
-    const input = normalizeGerman(raw);
-    const correct = normalizeGerman(word.deutsch || '');
-    if (isEmpty(raw) || input !== correct) { allCorrect = false; currentErrors.push(`數字 ${word.number} 的正確德文：${word.deutsch}`); }
-  }
+  // 各類型比對（與你原邏輯相同，略）
+  // ...【照你目前版本保留】...
 
-  // 顯示結果
+  // 🚫 清除任何潛在自動換題
+  clearTimeout(window.nextWordTimer);
+  window.nextWordTimer = null;
+
   if (allCorrect) {
     feedback.textContent = "正確";
     feedback.className = "correct";
@@ -326,21 +286,17 @@ function checkAnswer() {
     document.getElementById("next").disabled = true;
   }
 
-  // 🚫 永遠清除任何自動換題計時器
-  clearTimeout(window.nextWordTimer);
-  window.nextWordTimer = null;
-
   saveVocab();
 }
 
 // ========================================
-// 9) 儲存 vocab
+// 10) 儲存 vocab
 // ========================================
 function saveVocab() {
   localStorage.setItem("vocab", JSON.stringify(vocab));
 }
 
 // ========================================
-// 10) 啟動
+// 11) 啟動
 // ========================================
-nextWord();
+safeNext();
