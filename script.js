@@ -156,26 +156,37 @@ function enableEnterToCheck() {
   container.onkeydown = null;
   container.onkeyup = null;
 
+  let correctConfirmed = false; // 新增狀態記錄
+
   container.onkeyup = function (e) {
     if (e.key !== "Enter") return;
-    if (e.isComposing) return;
+    if (e.isComposing) return; // 組字中略過
     e.preventDefault();
 
     const feedback = document.getElementById("feedback");
     const nextBtn = document.getElementById("next");
 
-    // ✅ 只有「正確」且「下一題按鈕啟用」時才跳下一題
-    if (
-      feedback.classList.contains("correct") &&
-      nextBtn &&
-      !nextBtn.disabled
-    ) {
-      nextWord();
-      return;
+    // ✅ 若已答對，第一次按 Enter 只是確認，第二次才進下一題
+    if (feedback.classList.contains("correct")) {
+      if (!correctConfirmed) {
+        correctConfirmed = true; // 第一次按 Enter → 記錄確認
+        feedback.textContent = "正確！（再按 Enter 進入下一題）";
+        nextBtn.disabled = false;
+        return;
+      } else {
+        correctConfirmed = false; // 第二次按 → 真正換題
+        nextWord();
+        return;
+      }
     }
 
-    // 否則只檢查答案
+    // ⬇️ 若還沒答對，就執行檢查
     checkAnswer();
+
+    // 檢查完若是正確狀態，準備等待第二次 Enter
+    if (feedback.classList.contains("correct")) {
+      correctConfirmed = false;
+    }
   };
 }
 
