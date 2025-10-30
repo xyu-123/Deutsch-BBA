@@ -1,4 +1,4 @@
-﻿// ========================================
+// ========================================
 // 1) 載入詞彙 & 公用正規化
 // ========================================
 
@@ -63,8 +63,6 @@ function nextWord() {
   // 禁用下一個按鈕直到回答完成
   document.getElementById("next").disabled = true;
 
-  // 依照 lesson(課程標籤) 的勾選狀態篩選，並以等機率選一個單字
-  const checked = Array.from(document.querySelectorAll('#lessonContainer input[type=checkbox]:checked')).map(ch => ch.value);
   // 依照 lesson(課程標籤) 的勾選狀態篩選，並以等機率選一個單字
   const checked = Array.from(document.querySelectorAll('#lessonContainer input[type=checkbox]:checked')).map(ch => ch.value);
   // 沒勾選時，排除 Numbers；有勾選就照勾選來
