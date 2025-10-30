@@ -1,47 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deutsch Vocab Trainer</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deutsch Vocab Trainer</title>
+  <meta name="format-detection" content="telephone=no" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <h1>Deutsch Vocabulary Trainer</h1>
+  <h1>Deutsch Vocabulary Trainer</h1>
 
+  <!-- 用 form 包起來；在 form 層就先關掉各種自動功能 -->
+  <form id="quiz-form"
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false">
     <div id="quiz">
-        <div id="card">
-            <div style="margin-top:8px;">
-                <label>課程篩選：</label>
-                <div id="lessonContainer" 
-                     style="margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; justify-content:left;">
-                </div>
-            </div>
-
-            <p id="translation">點擊下一個開始！</p>
-
-            <div id="inputs" style="display:none;"></div>
-
-            <button id="check" style="display:none;">檢查</button>
-            <p id="feedback" style="display:none;"></p>
-            <button id="showAnswer" style="display:none;">顯示答案</button>
+      <div id="card">
+        <div style="margin-top:8px;">
+          <label>課程篩選：</label>
+          <div id="lessonContainer"
+               style="margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; justify-content:left;">
+          </div>
         </div>
 
-        <button id="next">下一個</button>
+        <p id="translation">點擊下一個開始！</p>
+
+        <!-- 這裡會動態插入 inputs -->
+        <div id="inputs" style="display:none;"></div>
+
+        <button id="check" type="button" style="display:none;">檢查</button>
+        <p id="feedback" style="display:none;"></p>
+        <button id="showAnswer" type="button" style="display:none;">顯示答案</button>
+      </div>
+
+      <button id="next" type="button">下一個</button>
     </div>
+  </form>
 
-    <!-- 詞庫分檔（順序重要） -->
-    <script src="vocab_nouns.js"></script>
-    <script src="vocab_verbs.js"></script>
-    <script src="vocab_other.js"></script>
-    <script src="vocab_sec.js"></script>
-    <script src="vocab_numbers.js"></script>
+  <!-- 詞庫分檔（順序重要） -->
+  <script src="vocab_nouns.js"></script>
+  <script src="vocab_verbs.js"></script>
+  <script src="vocab_other.js"></script>
+  <script src="vocab_sec.js"></script>
+  <script src="vocab_numbers.js"></script>
 
+  <!-- 合併成全域 vocabList -->
+  <script src="vocab_merge.js"></script>
 
-    <!-- 合併成全域 vocabList -->
-    <script src="vocab_merge.js"></script>
-
-    <!-- 主程式最後載入（例如 script.js 或 app.js） -->
-    <script src="script.js"></script>
+  <!-- 主程式 -->
+  <script src="script.js"></script>
 </body>
 </html>
