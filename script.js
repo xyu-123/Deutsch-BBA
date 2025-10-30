@@ -1,3 +1,7 @@
+document.addEventListener('DOMContentLoaded', () => {
+  const quizForm = document.getElementById('quiz-form');
+  if (quizForm) quizForm.addEventListener('submit', e => e.preventDefault());
+});
 // ========================================
 // 0) iPhone / Safari：關閉預測、自動更正、大寫、拼字
 // ========================================
@@ -150,43 +154,34 @@ function nextWord() {
 
 // ========================================
 // 4) Enter 鍵行為修正版
-// ========================================
+// ========================================let correctConfirmed = false;
+
 function enableEnterToCheck() {
   const container = document.getElementById("inputs");
   container.onkeydown = null;
   container.onkeyup = null;
 
-  let correctConfirmed = false; // 新增狀態記錄
-
   container.onkeyup = function (e) {
-    if (e.key !== "Enter") return;
-    if (e.isComposing) return; // 組字中略過
+    if (e.key !== "Enter" || e.isComposing) return;
     e.preventDefault();
 
     const feedback = document.getElementById("feedback");
     const nextBtn = document.getElementById("next");
 
-    // ✅ 若已答對，第一次按 Enter 只是確認，第二次才進下一題
     if (feedback.classList.contains("correct")) {
       if (!correctConfirmed) {
-        correctConfirmed = true; // 第一次按 Enter → 記錄確認
+        correctConfirmed = true;
         feedback.textContent = "正確！（再按 Enter 進入下一題）";
         nextBtn.disabled = false;
         return;
       } else {
-        correctConfirmed = false; // 第二次按 → 真正換題
+        correctConfirmed = false;
         nextWord();
         return;
       }
     }
 
-    // ⬇️ 若還沒答對，就執行檢查
     checkAnswer();
-
-    // 檢查完若是正確狀態，準備等待第二次 Enter
-    if (feedback.classList.contains("correct")) {
-      correctConfirmed = false;
-    }
   };
 }
 
