@@ -1,0 +1,122 @@
+/* === 基本排版 === */
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  margin: 0;
+  padding: 40px 10px;
+  background-color: #f5f7fa;
+}
+
+h1 {
+  margin-bottom: 25px;
+}
+
+/* === 卡片容器 === */
+#card {
+  width: 420px;
+  margin: 0 auto;
+  padding: 25px;
+  border: 2px solid #007bff;
+  border-radius: 10px;
+  background: #ffffff;
+  text-align: left;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* === 翻譯文字 === */
+#translation {
+  font-size: 24px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+/* === 輸入區 === */
+#inputs {
+  margin: 15px 0;
+  text-align: center;
+}
+#inputs input, #inputs select {
+  margin: 6px 0;
+  padding: 8px;
+  width: 85%;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+/* === 按鈕區 === */
+#controls {
+  text-align: center;
+  margin-top: 16px;
+}
+
+/* 讓按鈕之間有間距且樣式一致 */
+#controls button {
+  margin: 6px 8px;
+  padding: 8px 16px;
+  font-size: 15px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+#controls button:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+}
+
+#controls button:disabled {
+  background-color: #ccc;
+  color: #666;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* === 回饋區 === */
+#feedback {
+  text-align: center;
+  margin-top: 14px;
+  font-weight: bold;
+  font-size: 18px;
+}
+#feedback.correct {
+  color: #155724;
+  background: #d4edda;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+#feedback.incorrect {
+  color: #721c24;
+  background: #f8d7da;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+/* === 課程篩選 === */
+#lessonContainer {
+  text-align: left;
+  margin: 10px 0;
+}
+#lessonContainer label {
+  display: inline-block;
+  margin-right: 15px;
+  white-space: nowrap;
+}
+#lessonContainer input[type="checkbox"] {
+  margin-right: 5px;
+  vertical-align: middle;
+}
+/* 永久隱藏檢查按鈕（多重選擇器提高權重） */
+#check,
+#controls #check,
+button#check,
+button[id="check"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+
