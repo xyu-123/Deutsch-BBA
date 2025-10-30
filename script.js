@@ -362,7 +362,9 @@ function checkAnswer() {
     document.getElementById("showAnswer").style.display = "block";
     document.getElementById("next").disabled = true; // 防止錯誤時跳題
   }
-
+  // 🚫 鎖住自動換題（即使有其他 setTimeout）
+  clearTimeout(window.nextWordTimer);
+  window.nextWordTimer = null;
   saveVocab();
 }
 
