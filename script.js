@@ -1,40 +1,51 @@
 // ========================================
+// 0) iPhone / Safari：關閉預測、拼字、自動更正/大寫
+// ========================================
+function hardenInput(el) {
+  if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+  el.autocomplete = 'off';
+  el.autocapitalize = 'off';
+  el.setAttribute('autocorrect', 'off');
+  el.spellcheck = false;
+  el.inputMode = 'text';
+  el.enterKeyHint = 'done';
+  if (!el.name || /^(email|username|name)$/i.test(el.name)) {
+    el.name = 'ans_' + Math.random().toString(36).slice(2);
+  }
+}
+
+function hardenInputsIn(container = document) {
+  container.querySelectorAll('#inputs input, #inputs textarea').forEach(hardenInput);
+}
+
+// 在載入後監看 #inputs：動態新增的輸入框也會自動加上屬性
+document.addEventListener('DOMContentLoaded', () => {
+  const box = document.getElementById('inputs');
+  if (!box) return;
+  hardenInputsIn(box);
+  const mo = new MutationObserver(() => hardenInputsIn(box));
+  mo.observe(box, { childList: true, subtree: true });
+});
+
+// ========================================
 // 1) 載入詞彙 & 公用正規化
 // ========================================
-
-// 從 vocab.js 載入所有詞彙
 let vocab = [...vocabList];
 let currentIndex = -1;
 
-// 將變體母音與替代輸入標準化為同一形式 (使用 ae/oe/ue/ss)
-// 並清理各種隱藏/格式字元、奇怪空白與中點
 function normalizeGerman(s) {
   if (!s && s !== "") return "";
   s = String(s).toLowerCase();
-
-  // 統一 Unicode 形態
   s = s.normalize('NFKC');
-
-  // 移除所有「格式字元」（零寬空白/連字標記等）
-  s = s.replace(/\p{Cf}/gu, ""); // 需 /u
-
-  // 把所有空白類（含 NBSP、narrow NBSP、換行、tab…）統一成一般空白
+  s = s.replace(/\p{Cf}/gu, "");
   s = s.replace(/[\p{Z}\t\r\n\f]+/gu, " ");
-
-  // 移除會混進去的中點/間隔點
   s = s.replace(/[\u00B7\u2027\u2219]/g, "");
-
-  // 收斂連續空白並修頭尾
   s = s.replace(/\s+/g, " ").trim();
-
-  // 德文母音與 ß、以及冒號替代寫法
   s = s.replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
   s = s.replace(/a:/g, 'ae').replace(/o:/g, 'oe').replace(/u:/g, 'ue');
-
   return s;
 }
 
-// 片語比對專用：將字串正規化後，只保留 a–z（忽略空白/標點/大小寫）
 function foldPhrase(s) {
   if (!s) return "";
   s = normalizeGerman(s);
@@ -48,7 +59,6 @@ document.getElementById("next").addEventListener("click", nextWord);
 document.getElementById("check").addEventListener("click", checkAnswer);
 document.getElementById("showAnswer").addEventListener("click", showAnswer);
 
-// 只需要一格輸入的類型（不含 phrase；phrase 有自己的分支）
 let currentErrors = [];
 const SINGLE_INPUT_TYPES = new Set(["adjective", "adverb", "question", "other"]);
 
@@ -56,36 +66,26 @@ const SINGLE_INPUT_TYPES = new Set(["adjective", "adverb", "question", "other"])
 // 3) 出題：nextWord()
 // ========================================
 function nextWord() {
-  // 隱藏顯示答案按鈕
   document.getElementById("showAnswer").style.display = "none";
   if (vocab.length === 0) return;
-
-  // 禁用下一個按鈕直到回答完成
   document.getElementById("next").disabled = true;
 
-  // 依照 lesson(課程標籤) 的勾選狀態篩選，並以等機率選一個單字
   const checked = Array.from(document.querySelectorAll('#lessonContainer input[type=checkbox]:checked')).map(ch => ch.value);
-  // 沒勾選時，排除 Numbers；有勾選就照勾選來
   let pool = (checked.length === 0)
-  ? vocab.filter(w => (w.lesson || '') !== 'Numbers')     // 未勾選 → 不出數字
-  : vocab.filter(w => checked.includes((w.lesson || ''))); // 有勾選 → 依勾選
+    ? vocab.filter(w => (w.lesson || '') !== 'Numbers')
+    : vocab.filter(w => checked.includes((w.lesson || '')));
+  if (pool.length === 0)
+    pool = vocab.filter(w => (w.lesson || '') !== 'Numbers');
 
-  // 若篩到空集合，就退回「非 Numbers」
-  if (pool.length === 0) {
-  pool = vocab.filter(w => (w.lesson || '') !== 'Numbers');
-}
   const chosen = pool.length ? pool[Math.floor(Math.random() * pool.length)] : vocab[Math.floor(Math.random() * vocab.length)];
   currentIndex = vocab.indexOf(chosen);
 
-  // 更新翻譯（翻譯在 #inputs 外面）
   const translationDiv = document.getElementById("translation");
   if (translationDiv) translationDiv.textContent = chosen.chinese || "";
 
-  // 清空舊欄位，重新建立新題目的輸入欄位
   const inputsDiv = document.getElementById("inputs");
   inputsDiv.innerHTML = "";
 
-  // 組新欄位的 HTML，一次性塞進去
   let html = "";
   if (chosen.type === "noun") {
     html = `
@@ -99,7 +99,6 @@ function nextWord() {
       <input type="text" id="pluralInput" placeholder="複數形${chosen.countable ? "" : " (不可數，無需填寫)"}" ${chosen.countable ? "required" : "readonly"}>
     `;
   } else if (chosen.type === "verb") {
-    // 隨機選擇兩個其他人稱形態
     const forms = ['ich', 'du', 'er', 'wir', 'ihr', 'sie'];
     const hinttext = ['ich', 'du', 'er/es/sie', 'wir', 'ihr', 'sie/Sie'];
     const selected = [];
@@ -111,7 +110,6 @@ function nextWord() {
         placeholderselected.push(hinttext[idx]);
       }
     }
-    // 記錄被選中的形態到 word 物件，供檢查時使用
     chosen.selectedForms = selected;
 
     html = `
@@ -135,31 +133,25 @@ function nextWord() {
     html = `
       <input type="text" id="deutschInput" placeholder="德文拼字${chosen.hint ? ' (提示：' + chosen.hint + ')' : ''}" required>
     `;
-  }else if (chosen.type === "number") {
-  // 顯示阿拉伯數字在畫面上
-  const translationDiv = document.getElementById("translation");
-  translationDiv.textContent = chosen.number; // 顯示題目數字
-
-  // 建立輸入欄（讓使用者輸入德文字）
-  inputsDiv.innerHTML = `
-    <input type="text" id="deutschInput" 
-           placeholder="請輸入 ${chosen.number} 的德文拼字"
-           required>
-  `;
-}
+  } else if (chosen.type === "number") {
+    const translationDiv = document.getElementById("translation");
+    translationDiv.textContent = chosen.number;
+    inputsDiv.innerHTML = `
+      <input type="text" id="deutschInput"
+             placeholder="請輸入 ${chosen.number} 的德文拼字"
+             required>
+    `;
+  }
 
   inputsDiv.insertAdjacentHTML("beforeend", html);
+  hardenInputsIn(inputsDiv); // ← 這行保證每次出題都自動關閉預測功能
 
-  // 聚焦第一個輸入欄位
   setTimeout(() => {
     const firstInput = document.querySelector('#inputs input[type="text"], #inputs select');
     if (firstInput) firstInput.focus();
   }, 0);
 
-  // 綁 Enter
   enableEnterToCheck();
-
-  // 顯示狀態初始化
   document.getElementById("inputs").style.display = "block";
   document.getElementById("check").style.display = "block";
   document.getElementById("feedback").style.display = "none";
@@ -167,7 +159,7 @@ function nextWord() {
 }
 
 // ========================================
-// 4) Enter 監聽（用 keyup，IME 第一次 Enter 也會觸發）
+// 4) Enter 監聽
 // ========================================
 function enableEnterToCheck() {
   const container = document.getElementById("inputs");
@@ -176,25 +168,23 @@ function enableEnterToCheck() {
 
   container.onkeyup = function (e) {
     if (e.key !== "Enter") return;
-    if (e.isComposing) return; // 極少數情況仍在組字就略過一次
+    if (e.isComposing) return;
     e.preventDefault();
 
     const feedback = document.getElementById("feedback");
     const nextBtn = document.getElementById("next");
 
-    // 若已答對，再按 Enter 直接下一題
     if (feedback.className === "correct" && !nextBtn.disabled) {
       saveVocab();
       nextWord();
       return;
     }
-    // 否則檢查答案
     checkAnswer();
   };
 }
 
 // ========================================
-// 5) 顯示正確答案
+// 5) 顯示答案
 // ========================================
 function showAnswer() {
   const word = vocab[currentIndex];
@@ -210,7 +200,6 @@ function showAnswer() {
   }
   feedback.className = "incorrect";
 
-  // 啟用下一個按鈕並隱藏顯示答案按鈕
   document.getElementById("next").disabled = false;
   document.getElementById("showAnswer").style.display = "none";
 }
@@ -254,8 +243,6 @@ function populateLessonCheckboxes() {
     container.appendChild(wrapper);
   });
 }
-
-// 在載入時填充 lesson 核取方塊
 populateLessonCheckboxes();
 
 // ========================================
@@ -298,7 +285,6 @@ function checkAnswer() {
         currentErrors.push(`複數：${pluralAnswers.join(' 或 ')}`);
       }
     }
-
   } else if (word.type === "verb") {
     const infinitivInput = normalizeGerman(document.getElementById("infinitivInput").value.trim());
     const correctInfinitiv = normalizeGerman(word.infinitiv || '');
@@ -314,7 +300,6 @@ function checkAnswer() {
         currentErrors.push(`${form}：${word[form]}`);
       }
     }
-
   } else if (word.type === "country") {
     const numberSelected = document.getElementById("numberInput") ? document.getElementById("numberInput").value : null;
     const deutschInput = normalizeGerman(document.getElementById("deutschInput").value.trim());
@@ -330,46 +315,38 @@ function checkAnswer() {
       allCorrect = false;
       currentErrors.push(`德文：${word.deutsch}`);
     }
-
   } else if (word.type === "phrase") {
-    // 片語專屬比對（忽略空白/標點/大小寫）
     const input  = foldPhrase(document.getElementById("deutschInput").value);
     const answer = foldPhrase(word.deutsch);
     if (input !== answer) {
       allCorrect = false;
       currentErrors.push(`德文：${word.deutsch}`);
     }
-
   } else if (SINGLE_INPUT_TYPES.has(word.type)) {
-    // 形容詞、副詞、疑問詞、其他：只需檢查德文拼字
     const deutschInput = normalizeGerman(document.getElementById("deutschInput").value.trim());
     const correctDeutsch = normalizeGerman(word.deutsch || '');
     if (deutschInput !== correctDeutsch) {
       allCorrect = false;
       currentErrors.push(`德文：${word.deutsch}`);
     }
-  }else if (word.type === "number") {
-  const inputRaw = document.getElementById("deutschInput").value.trim();
-  const inp = normalizeGerman(inputRaw);
-  const main = normalizeGerman(word.deutsch || "");
-
-  if (inp !== main) {
-    allCorrect = false;
-    currentErrors.push(`數字 ${word.number} 的正確德文：${word.deutsch}`);
+  } else if (word.type === "number") {
+    const inputRaw = document.getElementById("deutschInput").value.trim();
+    const inp = normalizeGerman(inputRaw);
+    const main = normalizeGerman(word.deutsch || "");
+    if (inp !== main) {
+      allCorrect = false;
+      currentErrors.push(`數字 ${word.number} 的正確德文：${word.deutsch}`);
+    }
   }
-  }
-
 
   if (allCorrect) {
     feedback.textContent = "正確";
     feedback.className = "correct";
-    // 答對時才啟用下一個按鈕
     document.getElementById("next").disabled = false;
     document.getElementById("showAnswer").style.display = "none";
   } else {
     feedback.textContent = "錯誤";
     feedback.className = "incorrect";
-    // 顯示答案按鈕
     document.getElementById("showAnswer").style.display = "block";
   }
 
@@ -377,7 +354,7 @@ function checkAnswer() {
 }
 
 // ========================================
-// 8) 儲存 vocab（若你有動態修改 vocab）
+// 8) 儲存 vocab
 // ========================================
 function saveVocab() {
   localStorage.setItem("vocab", JSON.stringify(vocab));
