@@ -236,59 +236,115 @@ function checkAnswer() {
   let allCorrect = true;
   currentErrors = [];
 
+  const isEmpty = val => val === null || val === undefined || normalizeGerman(val) === "";
+
   if (word.type === "noun") {
     const genderInput = document.getElementById("genderInput").value;
-    const deutschInput = normalizeGerman(document.getElementById("deutschInput").value.trim());
-    const pluralInput = normalizeGerman(document.getElementById("pluralInput").value.trim());
+    const deutschRaw = document.getElementById("deutschInput").value.trim();
+    const pluralRaw = document.getElementById("pluralInput").value.trim();
+
+    const deutschInput = normalizeGerman(deutschRaw);
+    const pluralInput = normalizeGerman(pluralRaw);
+
     const correctGender = word.gender || 'none';
     const correctDeutsch = normalizeGerman(word.deutsch || '');
     const correctPlural = normalizeGerman(word.plural || '');
 
-    if (genderInput !== correctGender) { allCorrect = false; currentErrors.push(`性別：${correctGender}`); }
-    if (deutschInput !== correctDeutsch) { allCorrect = false; currentErrors.push(`德文：${word.deutsch}`); }
+    // 性別
+    if (genderInput !== correctGender) {
+      allCorrect = false;
+      currentErrors.push(`性別：${correctGender}`);
+    }
+
+    // 單數
+    if (isEmpty(deutschRaw) || deutschInput !== correctDeutsch) {
+      allCorrect = false;
+      currentErrors.push(`德文：${word.deutsch}`);
+    }
+
+    // 複數
     if (word.countable) {
-      const correctPluralAlt = normalizeGerman(word.Pl || '');
-      if (pluralInput !== correctPlural && (word.Pl === undefined || pluralInput !== correctPluralAlt)) {
+      if (isEmpty(pluralRaw)) {
         allCorrect = false;
-        const pluralAnswers = [word.plural];
-        if (word.Pl) pluralAnswers.push(word.Pl);
-        currentErrors.push(`複數：${pluralAnswers.join(' 或 ')}`);
+        currentErrors.push(`複數：${word.plural}`);
+      } else {
+        const correctPluralAlt = normalizeGerman(word.Pl || '');
+        if (pluralInput !== correctPlural && (word.Pl === undefined || pluralInput !== correctPluralAlt)) {
+          allCorrect = false;
+          const pluralAnswers = [word.plural];
+          if (word.Pl) pluralAnswers.push(word.Pl);
+          currentErrors.push(`複數：${pluralAnswers.join(' 或 ')}`);
+        }
       }
     }
+
   } else if (word.type === "verb") {
-    const infinitivInput = normalizeGerman(document.getElementById("infinitivInput").value.trim());
+    const infinitivRaw = document.getElementById("infinitivInput").value.trim();
+    const infinitivInput = normalizeGerman(infinitivRaw);
     const correctInfinitiv = normalizeGerman(word.infinitiv || '');
-    if (infinitivInput !== correctInfinitiv) { allCorrect = false; currentErrors.push(`原形：${word.infinitiv}`); }
-    for (const form of word.selectedForms) {
-      const input = normalizeGerman(document.getElementById(form + "Input").value.trim());
-      const correct = normalizeGerman(word[form] || '');
-      if (input !== correct) { allCorrect = false; currentErrors.push(`${form}：${word[form]}`); }
+    if (isEmpty(infinitivRaw) || infinitivInput !== correctInfinitiv) {
+      allCorrect = false;
+      currentErrors.push(`原形：${word.infinitiv}`);
     }
-  } else if (word.type === "country") {
-    const numberSelected = document.getElementById("numberInput")?.value;
-    const deutschInput = normalizeGerman(document.getElementById("deutschInput").value.trim());
-    const correctDeutsch = normalizeGerman(word.deutsch || '');
-    if (word.countable) {
-      const correctPlural = word.plural ? `複數` : `單數`;
-      if (numberSelected !== (word.plural ? "plural" : "singular")) {
-        allCorrect = false; currentErrors.push(`單複數：${correctPlural}`);
+
+    for (const form of word.selectedForms) {
+      const valRaw = document.getElementById(form + "Input").value.trim();
+      const val = normalizeGerman(valRaw);
+      const correct = normalizeGerman(word[form] || '');
+      if (isEmpty(valRaw) || val !== correct) {
+        allCorrect = false;
+        currentErrors.push(`${form}：${word[form]}`);
       }
     }
-    if (deutschInput !== correctDeutsch) { allCorrect = false; currentErrors.push(`德文：${word.deutsch}`); }
-  } else if (word.type === "phrase") {
-    const input  = foldPhrase(document.getElementById("deutschInput").value);
-    const answer = foldPhrase(word.deutsch);
-    if (input !== answer) { allCorrect = false; currentErrors.push(`德文：${word.deutsch}`); }
-  } else if (SINGLE_INPUT_TYPES.has(word.type)) {
-    const deutschInput = normalizeGerman(document.getElementById("deutschInput").value.trim());
+
+  } else if (word.type === "country") {
+    const numberSel = document.getElementById("numberInput")?.value;
+    const deutschRaw = document.getElementById("deutschInput").value.trim();
+    const deutschInput = normalizeGerman(deutschRaw);
     const correctDeutsch = normalizeGerman(word.deutsch || '');
-    if (deutschInput !== correctDeutsch) { allCorrect = false; currentErrors.push(`德文：${word.deutsch}`); }
+
+    if (word.countable) {
+      const correctPlural = word.plural ? "複數" : "單數";
+      if (numberSel !== (word.plural ? "plural" : "singular")) {
+        allCorrect = false;
+        currentErrors.push(`單複數：${correctPlural}`);
+      }
+    }
+
+    if (isEmpty(deutschRaw) || deutschInput !== correctDeutsch) {
+      allCorrect = false;
+      currentErrors.push(`德文：${word.deutsch}`);
+    }
+
+  } else if (word.type === "phrase") {
+    const raw = document.getElementById("deutschInput").value.trim();
+    const input = foldPhrase(raw);
+    const answer = foldPhrase(word.deutsch);
+    if (isEmpty(raw) || input !== answer) {
+      allCorrect = false;
+      currentErrors.push(`德文：${word.deutsch}`);
+    }
+
+  } else if (SINGLE_INPUT_TYPES.has(word.type)) {
+    const raw = document.getElementById("deutschInput").value.trim();
+    const input = normalizeGerman(raw);
+    const correct = normalizeGerman(word.deutsch || '');
+    if (isEmpty(raw) || input !== correct) {
+      allCorrect = false;
+      currentErrors.push(`德文：${word.deutsch}`);
+    }
+
   } else if (word.type === "number") {
-    const inp = normalizeGerman(document.getElementById("deutschInput").value.trim());
-    const main = normalizeGerman(word.deutsch || "");
-    if (inp !== main) { allCorrect = false; currentErrors.push(`數字 ${word.number} 的正確德文：${word.deutsch}`); }
+    const raw = document.getElementById("deutschInput").value.trim();
+    const input = normalizeGerman(raw);
+    const correct = normalizeGerman(word.deutsch || '');
+    if (isEmpty(raw) || input !== correct) {
+      allCorrect = false;
+      currentErrors.push(`數字 ${word.number} 的正確德文：${word.deutsch}`);
+    }
   }
 
+  // 結果顯示
   if (allCorrect) {
     feedback.textContent = "正確";
     feedback.className = "correct";
@@ -298,7 +354,7 @@ function checkAnswer() {
     feedback.textContent = "錯誤";
     feedback.className = "incorrect";
     document.getElementById("showAnswer").style.display = "block";
-    document.getElementById("next").disabled = true; // 🔒 防止錯誤時能跳下一題
+    document.getElementById("next").disabled = true; // 防止錯誤時跳題
   }
 
   saveVocab();
