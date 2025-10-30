@@ -11,31 +11,31 @@
   <h1>Deutsch Vocabulary Trainer</h1>
 
   <!-- 用 form 包起來；在 form 層就先關掉各種自動功能 -->
-  <form id="quiz-form"
-        autocomplete="off"
-        autocapitalize="off"
-        autocorrect="off"
-        spellcheck="false">
+  <form id="quiz-form" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div id="quiz">
       <div id="card">
         <div style="margin-top:8px;">
           <label>課程篩選：</label>
-          <div id="lessonContainer"
-               style="margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; justify-content:left;">
-          </div>
+          <div id="lessonContainer" style="margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; justify-content:left;"></div>
         </div>
 
+        <!-- 翻譯 -->
         <p id="translation">點擊下一個開始！</p>
 
-        <!-- 這裡會動態插入 inputs -->
+        <!-- 🟩 輸入區（動態插入欄位） -->
         <div id="inputs" style="display:none;"></div>
 
-        <button id="check" type="button" style="display:none;">檢查</button>
-        <p id="feedback" style="display:none;"></p>
-        <button id="showAnswer" type="button" style="display:none;">顯示答案</button>
-      </div>
+        <!-- 🟩 按鈕列（不知道 → 檢查 → 顯示答案 → 下一個） -->
+        <div id="controls">
+          <button id="dontKnow" type="button" style="display:none;">不知道</button>
+          <button id="check" type="button" style="display:none;">檢查</button>
+          <button id="showAnswer" type="button" style="display:none;">顯示答案</button>
+          <button id="next" type="button">下一個</button>
+        </div>
 
-      <button id="next" type="button">下一個</button>
+        <!-- 回饋 -->
+        <p id="feedback" style="display:none;"></p>
+      </div>
     </div>
   </form>
 
