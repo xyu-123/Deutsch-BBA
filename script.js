@@ -1,5 +1,5 @@
 // ========================================
-// 0) 禁止表單自動提交（防止 iPhone 按 Enter 跳題）+ 初始隱藏「檢查」
+// 0) 禁止表單自動提交（防止 iPhone 按 Enter 跳題）+ 初始設定
 // ========================================
 document.addEventListener('DOMContentLoaded', () => {
   const quizForm = document.getElementById('quiz-form');
@@ -11,13 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('showAnswer')?.setAttribute('type','button');
   document.getElementById('dontKnow')?.setAttribute('type','button');
 
-  // 🟩 開頁時就把「檢查」隱藏（雙保險）
-  const checkBtn = document.getElementById('check');
-  if (checkBtn) {
-    checkBtn.style.display = 'none';
-    checkBtn.disabled = true;
-    checkBtn.setAttribute('hidden', '');
-  }
+  // 🟩【變更】不要在這裡把「檢查」按鈕隱藏，避免一開始就被鎖死
+  // （移除原本的：checkBtn.style.display='none' 之類的程式）
 });
 
 // ========================================
@@ -31,11 +26,9 @@ function hardenInput(el) {
   el.spellcheck = false;
   el.inputMode = 'text';
   el.enterKeyHint = 'done';
-  // 避免 Safari 把某些 name 當成特殊欄位
   if (!el.name || /^(email|username|name)$/i.test(el.name)) {
     el.name = 'ans_' + Math.random().toString(36).slice(2);
   }
-  // 🚫 禁止 Enter 預設行為（防自動送出 / 跳題）
   el.addEventListener("keydown", ev => {
     if (ev.key === "Enter") ev.preventDefault();
   });
@@ -73,28 +66,21 @@ let currentErrors = [];
 
 const SINGLE_INPUT_TYPES = new Set(["adjective", "adverb", "question", "other"]); // 單欄位題型
 
-// 允許變體母音；清理隱藏字元、奇怪空白與中點；大小寫不敏感
 function normalizeGerman(s) {
   if (!s && s !== "") return "";
   s = String(s).toLowerCase();
-  s = s.normalize('NFKC');                   // 統一 Unicode 形態
-  s = s.replace(/\p{Cf}/gu, "");             // 移除零寬/格式字元
-  s = s.replace(/[\p{Z}\t\r\n\f]+/gu, " ");  // 各種空白統一
-  s = s.replace(/[\u00B7\u2027\u2219]/g, ""); // 移除間隔點
+  s = s.normalize('NFKC');
+  s = s.replace(/\p{Cf}/gu, "");
+  s = s.replace(/[\p{Z}\t\r\n\f]+/gu, " ");
+  s = s.replace(/[\u00B7\u2027\u2219]/g, "");
   s = s.replace(/\s+/g, " ").trim();
 
-  // 變體母音同化
   s = s.replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
   s = s.replace(/a:/g, 'ae').replace(/o:/g, 'oe').replace(/u:/g, 'ue');
   return s;
 }
 
-// 片語：忽略空白/標點（僅保留 a-z 比對），仍包含變體母音同化
-function foldPhrase(s) {
-  return normalizeGerman(s).replace(/[^a-z]/g, "");
-}
-
-// 必填欄位是否為空（用 normalize 判斷，可過濾奇怪空白）
+function foldPhrase(s) { return normalizeGerman(s).replace(/[^a-z]/g, ""); }
 function isBlankRequired(el) {
   if (!el) return true;
   const v = el.value != null ? String(el.value) : "";
@@ -105,7 +91,7 @@ function isBlankRequired(el) {
 // 4) 事件綁定
 // ========================================
 document.getElementById("next").addEventListener("click", safeNext);
-document.getElementById("check").addEventListener("click", checkAnswer); // 仍綁定，但按鈕被隱藏
+document.getElementById("check").addEventListener("click", checkAnswer);
 document.getElementById("showAnswer").addEventListener("click", showAnswer);
 document.getElementById("dontKnow").addEventListener("click", dontKnow);
 
@@ -113,12 +99,13 @@ document.getElementById("dontKnow").addEventListener("click", dontKnow);
 // 5) 出題（僅允許安全令牌）
 // ========================================
 function nextWord(token) {
-  if (token !== __advanceToken) return; // 🚫 沒有令牌不允許換題
+  if (token !== __advanceToken) return;
 
   correctConfirmed = false;
   const showBtn = document.getElementById("showAnswer");
   const dontBtn = document.getElementById("dontKnow");
   const nextBtn = document.getElementById("next");
+  const checkBtn = document.getElementById("check");
   const feedback = document.getElementById("feedback");
 
   showBtn.style.display = "none";
@@ -130,7 +117,6 @@ function nextWord(token) {
 
   if (vocab.length === 0) return;
 
-  // 依課程勾選篩選；未勾選時排除 Numbers 題
   const checked = Array.from(document.querySelectorAll('#lessonContainer input[type=checkbox]:checked')).map(ch => ch.value);
   let pool = (checked.length === 0)
     ? vocab.filter(w => (w.lesson || '') !== 'Numbers')
@@ -140,11 +126,9 @@ function nextWord(token) {
   const chosen = pool[Math.floor(Math.random() * pool.length)];
   currentIndex = vocab.indexOf(chosen);
 
-  // 顯示翻譯／或數字
   const translationDiv = document.getElementById("translation");
   translationDiv.textContent = (chosen.type === "number") ? String(chosen.number) : (chosen.chinese || "");
 
-  // 重建輸入區
   const inputsDiv = document.getElementById("inputs");
   inputsDiv.innerHTML = "";
 
@@ -204,22 +188,20 @@ function nextWord(token) {
 
   enableEnterToCheck();
 
-  // 顯示區塊（check 會被保險程式再次隱藏）
   document.getElementById("inputs").style.display = "block";
-  document.getElementById("check").style.display = "block";   // 讓既有程式不出錯，接著馬上隱藏
   document.getElementById("dontKnow").style.display = "block";
   document.getElementById("feedback").style.display = "none";
   document.getElementById("feedback").className = "";
 
-  // 🟩 保險：即使上面把 #check 設成 block，也在下一個 frame 強制關掉
-  requestAnimationFrame(() => {
-    const checkBtn = document.getElementById('check');
-    if (checkBtn) {
-      checkBtn.style.display = 'none';
-      checkBtn.disabled = true;
-      checkBtn.setAttribute('hidden', '');
-    }
-  });
+  // 🟩【變更】出題時「顯示＆啟用」檢查按鈕
+  if (checkBtn) {
+    checkBtn.style.display = "block";
+    checkBtn.disabled = false;
+    checkBtn.removeAttribute('hidden');
+  }
+
+  // 🟥【刪除】不要在下一個 frame 又把檢查按鈕隱藏
+  // （移除原本的 requestAnimationFrame(... 隱藏 check ...)）
 }
 
 // ========================================
@@ -245,7 +227,7 @@ function enableEnterToCheck() {
         return;
       } else {
         correctConfirmed = false;
-        safeNext(); // ✅ 改用安全換題
+        safeNext();
         return;
       }
     }
@@ -271,7 +253,6 @@ function showAnswer() {
   document.getElementById("showAnswer").style.display = "none";
 }
 
-// 把本題所有正解整理成清單（給「不知道」與「顯示答案」共用）
 function buildCorrectAnswers(word) {
   const list = [];
   if (!word) return list;
@@ -305,12 +286,11 @@ function buildCorrectAnswers(word) {
   return list;
 }
 
-// 「不知道」：直接顯示正解並開放下一題
 function dontKnow() {
   const word = vocab[currentIndex];
-  currentErrors = buildCorrectAnswers(word); // 填好要顯示的正解
-  showAnswer();                               // 直接沿用顯示邏輯
-  document.getElementById("dontKnow").style.display = "none"; // 可選：按過就藏起來
+  currentErrors = buildCorrectAnswers(word);
+  showAnswer();
+  document.getElementById("dontKnow").style.display = "none";
 }
 
 // ========================================
@@ -363,7 +343,7 @@ function checkAnswer() {
   currentErrors = [];
   const missing = [];
 
-  // ---------- 必填檢查 ----------
+  // 必填檢查
   if (word.type === "noun") {
     const di = document.getElementById("deutschInput");
     const pi = document.getElementById("pluralInput");
@@ -399,7 +379,7 @@ function checkAnswer() {
     return;
   }
 
-  // ---------- 實際比對 ----------
+  // 實際比對
   if (word.type === "noun") {
     const genderInput  = (document.getElementById("genderInput") || {}).value || "none";
     const deutschInput = normalizeGerman(document.getElementById("deutschInput").value.trim());
@@ -454,7 +434,6 @@ function checkAnswer() {
     if (input !== answer) currentErrors.push(`德文：${word.deutsch}`);
 
   } else if (word.type === "number") {
-    // 顯示阿拉伯數字、只接受德文字（不接受阿拉伯數字）
     const inp  = normalizeGerman(document.getElementById("deutschInput").value.trim());
     const main = normalizeGerman(word.deutsch || "");
     if (inp !== main) currentErrors.push(`數字 ${word.number} 的正確德文：${word.deutsch}`);
@@ -467,7 +446,7 @@ function checkAnswer() {
     currentErrors.push("未知題型：" + word.type);
   }
 
-  // ---------- 最終判定 ----------
+  // 最終判定
   if (currentErrors.length === 0) {
     feedback.textContent = "正確";
     feedback.className = "correct";
@@ -479,7 +458,6 @@ function checkAnswer() {
     showBtn.style.display = "block";
     document.getElementById("next").disabled = true;
   }
-
   saveVocab();
 }
 
