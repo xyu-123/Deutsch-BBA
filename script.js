@@ -137,17 +137,21 @@ function nextWord() {
 
   if (vocab.length === 0) return;
 
-  // 篩選 pool（未勾選就用全部）
-  const checked = Array.from(document.querySelectorAll('#lessonContainer input[type=checkbox]:checked')).map(ch => ch.value);
-  const pool = checked.length ? vocab.filter(w => checked.includes((w.lesson || ''))) : vocab;
+ // 🟩 改良版課程篩選 — 只有勾選 "Numbers" 才會出現數字題
+const checked = Array.from(document.querySelectorAll('#lessonContainer input[type=checkbox]:checked')).map(ch => ch.value);
 
-  if (pool.length === 0) {
-    document.getElementById('translation').textContent = '（目前篩選沒有條目）';
-    document.getElementById('inputs').style.display = 'none';
-    return;
-  }
-
-  const chosen = pool[Math.floor(Math.random() * pool.length)];
+let pool;
+if (checked.includes('Numbers')) {
+  // 勾選了 Numbers，就取勾選的全部
+  pool = vocab.filter(w => checked.includes((w.lesson || '')));
+} else {
+  // 沒勾 Numbers，就排除 Numbers 題
+  pool = vocab.filter(w =>
+    checked.length === 0
+      ? (w.lesson || '') !== 'Numbers'
+      : checked.includes((w.lesson || '')) && (w.lesson || '') !== 'Numbers'
+  );
+}  const chosen = pool[Math.floor(Math.random() * pool.length)];
   currentIndex = vocab.indexOf(chosen);
 
   // 題面
