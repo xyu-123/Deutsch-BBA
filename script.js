@@ -1,17 +1,23 @@
 // ========================================
-// 0) 禁止表單自動提交（防 iPhone Enter 跳題）+ 初始設定
+// 0) 禁止表單自動提交（防止 iPhone 按 Enter 跳題）+ 初始隱藏「檢查」
 // ========================================
 document.addEventListener('DOMContentLoaded', () => {
   const quizForm = document.getElementById('quiz-form');
   if (quizForm) quizForm.addEventListener('submit', e => e.preventDefault());
 
   // 所有按鈕明確標記為非 submit
-  ['next','check','showAnswer','dontKnow'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) b.setAttribute('type','button');
-  });
+  document.getElementById('next')?.setAttribute('type','button');
+  document.getElementById('check')?.setAttribute('type','button');
+  document.getElementById('showAnswer')?.setAttribute('type','button');
+  document.getElementById('dontKnow')?.setAttribute('type','button');
 
-  // ⚠️ 不要在這裡隱藏 #check，讓出題時決定顯示狀態
+  // 🟩 開頁時就把「檢查」隱藏（雙保險）
+  const checkBtn = document.getElementById('check');
+  if (checkBtn) {
+    checkBtn.style.display = 'none';
+    checkBtn.disabled = true;
+    checkBtn.setAttribute('hidden', '');
+  }
 });
 
 // ========================================
@@ -25,16 +31,21 @@ function hardenInput(el) {
   el.spellcheck = false;
   el.inputMode = 'text';
   el.enterKeyHint = 'done';
+  // 避免 Safari 把某些 name 當成特殊欄位
   if (!el.name || /^(email|username|name)$/i.test(el.name)) {
     el.name = 'ans_' + Math.random().toString(36).slice(2);
   }
-  el.addEventListener('keydown', ev => {
-    if (ev.key === 'Enter') ev.preventDefault();
+  // 🚫 禁止 Enter 預設行為（防自動送出 / 跳題）
+  el.addEventListener("keydown", ev => {
+    if (ev.key === "Enter") ev.preventDefault();
   });
 }
+
 function hardenInputsIn(container = document) {
   container.querySelectorAll('#inputs input, #inputs textarea').forEach(hardenInput);
 }
+
+// 動態監看 #inputs（新欄位自動套用 hardenInput）
 document.addEventListener('DOMContentLoaded', () => {
   const box = document.getElementById('inputs');
   if (!box) return;
@@ -44,45 +55,266 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ========================================
-// 2) 狀態
+// 2) 換題令牌鎖 — 只允許安全呼叫 nextWord()
+// ========================================
+let __advanceToken = 0;
+function safeNext() {
+  __advanceToken += 1;
+  nextWord(__advanceToken);
+}
+
+// ========================================
+// 3) 載入詞彙 & 公用正規化
 // ========================================
 let vocab = Array.isArray(window.vocabList) ? [...window.vocabList] : [];
 let currentIndex = -1;
+let correctConfirmed = false;
 let currentErrors = [];
-const SINGLE_INPUT_TYPES = new Set(['adjective','adverb','question','other','phrase']);
 
-// ========================================
-// 3) 正規化工具
-// ========================================
+const SINGLE_INPUT_TYPES = new Set(["adjective", "adverb", "question", "other"]); // 單欄位題型
+
+// 允許變體母音；清理隱藏字元、奇怪空白與中點；大小寫不敏感
 function normalizeGerman(s) {
-  if (!s && s !== '') return '';
-  s = String(s).toLowerCase()
-    .normalize('NFKC')
-    .replace(/\p{Cf}/gu, '')
-    .replace(/[\p{Z}\t\r\n\f]+/gu, ' ')
-    .replace(/[\u00B7\u2027\u2219]/g, '')
-    .replace(/\s+/g, ' ').trim()
-    .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
-    .replace(/a:/g,'ae').replace(/o:/g,'oe').replace(/u:/g,'ue');
+  if (!s && s !== "") return "";
+  s = String(s).toLowerCase();
+  s = s.normalize('NFKC');                   // 統一 Unicode 形態
+  s = s.replace(/\p{Cf}/gu, "");             // 移除零寬/格式字元
+  s = s.replace(/[\p{Z}\t\r\n\f]+/gu, " ");  // 各種空白統一
+  s = s.replace(/[\u00B7\u2027\u2219]/g, ""); // 移除間隔點
+  s = s.replace(/\s+/g, " ").trim();
+
+  // 變體母音同化
+  s = s.replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+  s = s.replace(/a:/g, 'ae').replace(/o:/g, 'oe').replace(/u:/g, 'ue');
   return s;
 }
-function foldPhrase(s) { return normalizeGerman(s).replace(/[^a-z]/g, ''); }
+
+// 片語：忽略空白/標點（僅保留 a-z 比對），仍包含變體母音同化
+function foldPhrase(s) {
+  return normalizeGerman(s).replace(/[^a-z]/g, "");
+}
+
+// 必填欄位是否為空（用 normalize 判斷，可過濾奇怪空白）
 function isBlankRequired(el) {
   if (!el) return true;
-  const v = el.value != null ? String(el.value) : '';
-  return normalizeGerman(v) === '';
+  const v = el.value != null ? String(el.value) : "";
+  return normalizeGerman(v) === "";
 }
 
 // ========================================
 // 4) 事件綁定
 // ========================================
-document.getElementById('next').addEventListener('click', nextWord);
-document.getElementById('check').addEventListener('click', checkAnswer);
-document.getElementById('showAnswer').addEventListener('click', showAnswer);
-document.getElementById('dontKnow').addEventListener('click', dontKnow);
+document.getElementById("next").addEventListener("click", safeNext);
+document.getElementById("check").addEventListener("click", checkAnswer); // 仍綁定，但按鈕被隱藏
+document.getElementById("showAnswer").addEventListener("click", showAnswer);
+document.getElementById("dontKnow").addEventListener("click", dontKnow);
 
 // ========================================
-// 5) 課程篩選
+// 5) 出題（僅允許安全令牌）
+// ========================================
+function nextWord(token) {
+  if (token !== __advanceToken) return; // 🚫 沒有令牌不允許換題
+
+  correctConfirmed = false;
+  const showBtn = document.getElementById("showAnswer");
+  const dontBtn = document.getElementById("dontKnow");
+  const nextBtn = document.getElementById("next");
+  const feedback = document.getElementById("feedback");
+
+  showBtn.style.display = "none";
+  dontBtn.style.display = "block";
+  nextBtn.disabled = true;
+
+  feedback.style.display = "none";
+  feedback.className = "";
+
+  if (vocab.length === 0) return;
+
+  // 依課程勾選篩選；未勾選時排除 Numbers 題
+  const checked = Array.from(document.querySelectorAll('#lessonContainer input[type=checkbox]:checked')).map(ch => ch.value);
+  let pool = (checked.length === 0)
+    ? vocab.filter(w => (w.lesson || '') !== 'Numbers')
+    : vocab.filter(w => checked.includes((w.lesson || '')));
+  if (pool.length === 0) pool = vocab.filter(w => (w.lesson || '') !== 'Numbers');
+
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  currentIndex = vocab.indexOf(chosen);
+
+  // 顯示翻譯／或數字
+  const translationDiv = document.getElementById("translation");
+  translationDiv.textContent = (chosen.type === "number") ? String(chosen.number) : (chosen.chinese || "");
+
+  // 重建輸入區
+  const inputsDiv = document.getElementById("inputs");
+  inputsDiv.innerHTML = "";
+
+  let html = "";
+  if (chosen.type === "noun") {
+    html = `
+      <select id="genderInput" required>
+        <option value="none">無性別</option>
+        <option value="der">der (陽性)</option>
+        <option value="das">das (中性)</option>
+        <option value="die">die (陰性)</option>
+      </select>
+      <input type="text" id="deutschInput" placeholder="德文拼字${chosen.hint ? ' (提示：' + chosen.hint + ')' : ''}" required>
+      <input type="text" id="pluralInput" placeholder="複數形${chosen.countable ? "" : " (不可數，無需填寫)"}" ${chosen.countable ? "required" : "readonly"}>
+    `;
+  } else if (chosen.type === "verb") {
+    const forms = ['ich', 'du', 'er', 'wir', 'ihr', 'sie'];
+    const hinttext = ['ich', 'du', 'er/es/sie', 'wir', 'ihr', 'sie/Sie'];
+    const selected = [];
+    const placeholderselected = [];
+    while (selected.length < 2) {
+      const idx = Math.floor(Math.random() * forms.length);
+      if (!selected.includes(forms[idx])) {
+        selected.push(forms[idx]);
+        placeholderselected.push(hinttext[idx]);
+      }
+    }
+    chosen.selectedForms = selected;
+    html = `
+      <input type="text" id="infinitivInput" placeholder="原形 (Infinitiv)${chosen.hint ? ' (提示：' + chosen.hint + ')' : ''}" required>
+      <input type="text" id="${selected[0]}Input" placeholder="${placeholderselected[0]}" required>
+      <input type="text" id="${selected[1]}Input" placeholder="${placeholderselected[1]}" required>
+    `;
+  } else if (chosen.type === "country") {
+    if (chosen.countable) {
+      html += `
+        <select id="numberInput" required>
+          <option value="singular">單數</option>
+          <option value="plural">複數</option>
+        </select>
+      `;
+    }
+    html += `<input type="text" id="deutschInput" placeholder="德文拼字${chosen.hint ? ' (提示：' + chosen.hint + ')' : ''}" required>`;
+  } else if (chosen.type === "phrase" || SINGLE_INPUT_TYPES.has(chosen.type)) {
+    html = `<input type="text" id="deutschInput" placeholder="德文拼字${chosen.hint ? ' (提示：' + chosen.hint + ')' : ''}" required>`;
+  } else if (chosen.type === "number") {
+    html = `<input type="text" id="deutschInput" placeholder="請輸入 ${chosen.number} 的德文拼字" required>`;
+  }
+
+  inputsDiv.insertAdjacentHTML("beforeend", html);
+  hardenInputsIn(inputsDiv);
+
+  setTimeout(() => {
+    const firstInput = document.querySelector('#inputs input, #inputs select');
+    if (firstInput) firstInput.focus();
+  }, 0);
+
+  enableEnterToCheck();
+
+  // 顯示區塊（check 會被保險程式再次隱藏）
+  document.getElementById("inputs").style.display = "block";
+  document.getElementById("check").style.display = "block";   // 讓既有程式不出錯，接著馬上隱藏
+  document.getElementById("dontKnow").style.display = "block";
+  document.getElementById("feedback").style.display = "none";
+  document.getElementById("feedback").className = "";
+
+  // 🟩 保險：即使上面把 #check 設成 block，也在下一個 frame 強制關掉
+  requestAnimationFrame(() => {
+    const checkBtn = document.getElementById('check');
+    if (checkBtn) {
+      checkBtn.style.display = 'none';
+      checkBtn.disabled = true;
+      checkBtn.setAttribute('hidden', '');
+    }
+  });
+}
+
+// ========================================
+// 6) Enter 雙階段行為（答對要再按一次 Enter 才換題）
+// ========================================
+function enableEnterToCheck() {
+  const container = document.getElementById("inputs");
+  container.onkeydown = null;
+  container.onkeyup = null;
+
+  container.onkeyup = function (e) {
+    if (e.key !== "Enter" || e.isComposing) return;
+    e.preventDefault();
+
+    const feedback = document.getElementById("feedback");
+    const nextBtn = document.getElementById("next");
+
+    if (feedback.classList.contains("correct")) {
+      if (!correctConfirmed) {
+        correctConfirmed = true;
+        feedback.textContent = "正確！（再按 Enter 進入下一題）";
+        nextBtn.disabled = false;
+        return;
+      } else {
+        correctConfirmed = false;
+        safeNext(); // ✅ 改用安全換題
+        return;
+      }
+    }
+
+    checkAnswer();
+  };
+}
+
+// ========================================
+// 7) 顯示答案（提供給「不知道」與「顯示答案」）
+// ========================================
+function showAnswer() {
+  const feedback = document.getElementById("feedback");
+  feedback.style.display = "block";
+  if (currentErrors.length === 0) {
+    feedback.innerHTML = '<ul><li><strong>正確答案：</strong></li><li><em>無需顯示，您已答對或尚未作答。</em></li></ul>';
+  } else {
+    const items = currentErrors.map(item => `<li>${item}</li>`).join('');
+    feedback.innerHTML = `<ul><li><strong>正確答案：</strong></li>${items}</ul>`;
+  }
+  feedback.className = "incorrect";
+  document.getElementById("next").disabled = false;
+  document.getElementById("showAnswer").style.display = "none";
+}
+
+// 把本題所有正解整理成清單（給「不知道」與「顯示答案」共用）
+function buildCorrectAnswers(word) {
+  const list = [];
+  if (!word) return list;
+
+  if (word.type === "noun") {
+    const g = word.gender || "none";
+    const gLabel = {none:"無性別", der:"der (陽性)", das:"das (中性)", die:"die (陰性)"}[g] || g;
+    if (g !== "none") list.push(`性別：${gLabel}`);
+    if (word.deutsch) list.push(`德文：${word.deutsch}`);
+    if (word.countable) {
+      const pluralAns = [];
+      if (word.plural) pluralAns.push(word.plural);
+      if (word.Pl) pluralAns.push(word.Pl);
+      if (pluralAns.length) list.push(`複數：${pluralAns.join(" 或 ")}`);
+    }
+  } else if (word.type === "verb") {
+    if (word.infinitiv) list.push(`原形：${word.infinitiv}`);
+    for (const f of ["ich","du","er","wir","ihr","sie"]) {
+      if (word[f]) list.push(`${f}：${word[f]}`);
+    }
+  } else if (word.type === "country") {
+    if (word.deutsch) list.push(`德文：${word.deutsch}`);
+    if (word.countable) list.push(`單複數：${word.plural ? "複數" : "單數"}`);
+  } else if (word.type === "phrase") {
+    if (word.deutsch) list.push(`德文：${word.deutsch}`);
+  } else if (word.type === "number") {
+    if (word.deutsch) list.push(`數字 ${word.number} 的正確德文：${word.deutsch}`);
+  } else {
+    if (word.deutsch) list.push(`德文：${word.deutsch}`);
+  }
+  return list;
+}
+
+// 「不知道」：直接顯示正解並開放下一題
+function dontKnow() {
+  const word = vocab[currentIndex];
+  currentErrors = buildCorrectAnswers(word); // 填好要顯示的正解
+  showAnswer();                               // 直接沿用顯示邏輯
+  document.getElementById("dontKnow").style.display = "none"; // 可選：按過就藏起來
+}
+
+// ========================================
+// 8) 課程標籤
 // ========================================
 function populateLessonCheckboxes() {
   const container = document.getElementById('lessonContainer');
@@ -112,288 +344,153 @@ function populateLessonCheckboxes() {
 populateLessonCheckboxes();
 
 // ========================================
-// 6) 出題
-// ========================================
-function nextWord() {
-  const showBtn = document.getElementById('showAnswer');
-  const dontBtn = document.getElementById('dontKnow');
-  const checkBtn = document.getElementById('check');
-  const nextBtn = document.getElementById('next');
-  const feedback = document.getElementById('feedback');
-
-  // 按鈕狀態
-  showBtn.style.display = 'none';
-  dontBtn.style.display = 'block';
-  feedback.style.display = 'none';
-  feedback.className = '';
-  nextBtn.disabled = true;
-
-  // ✅ 這裡顯示「檢查」按鈕（關鍵）
-  if (checkBtn) {
-    checkBtn.style.display = 'block';
-    checkBtn.disabled = false;
-    checkBtn.removeAttribute('hidden');
-  }
-
-  if (vocab.length === 0) return;
-
-// ✅ 只有勾選 "Numbers" 才允許 number 題；其餘情況一律排除 number 題
-const checked = Array.from(
-  document.querySelectorAll('#lessonContainer input[type=checkbox]:checked')
-).map(ch => (ch.value || '').trim());
-
-const includeNumbers = checked.includes('Numbers');
-
-let pool = vocab.filter(w => {
-  const lesson = ((w.lesson ?? '') + '').trim();
-
-  if (w.type === 'number') {
-    // 數字題：只有在勾選 Numbers 時才出現；若還勾了別的課程，也要同時匹配
-    if (!includeNumbers) return false;
-    return checked.length === 0 || checked.includes(lesson) || lesson === 'Numbers';
-  }
-
-  // 非數字題：若完全沒勾任何課程，就排除 Numbers 題；有勾就照清單過濾
-  if (checked.length === 0) return lesson !== 'Numbers';
-  return checked.includes(lesson);
-});
-
-// 防呆：若剛好被篩到空集合，退回「排除數字題」的全庫
-if (pool.length === 0) {
-  pool = vocab.filter(w => w.type !== 'number' && ((w.lesson ?? '').trim() !== 'Numbers'));
-} const chosen = pool[Math.floor(Math.random() * pool.length)];
-  currentIndex = vocab.indexOf(chosen);
-
-  // 題面
-  const translationDiv = document.getElementById('translation');
-  translationDiv.textContent = (chosen.type === 'number') ? String(chosen.number) : (chosen.chinese || '');
-
-  // 動態輸入欄位
-  const inputsDiv = document.getElementById('inputs');
-  inputsDiv.innerHTML = '';
-
-  let html = '';
-  if (chosen.type === 'noun') {
-    html = `
-      <select id="genderInput" required>
-        <option value="none">無性別</option>
-        <option value="der">der (陽性)</option>
-        <option value="das">das (中性)</option>
-        <option value="die">die (陰性)</option>
-      </select>
-      <input type="text" id="deutschInput" placeholder="德文拼字${chosen.hint ? ' (提示：' + chosen.hint + ')' : ''}" required>
-      <input type="text" id="pluralInput" placeholder="複數形${chosen.countable ? '' : ' (不可數，無需填寫)'}" ${chosen.countable ? 'required' : 'readonly'}>
-    `;
-  } else if (chosen.type === 'verb') {
-    const forms = ['ich','du','er','wir','ihr','sie'];
-    const hinttext = ['ich','du','er/es/sie','wir','ihr','sie/Sie'];
-    const selected = [];
-    const placeholderselected = [];
-    while (selected.length < 2) {
-      const idx = Math.floor(Math.random() * forms.length);
-      if (!selected.includes(forms[idx])) {
-        selected.push(forms[idx]);
-        placeholderselected.push(hinttext[idx]);
-      }
-    }
-    chosen.selectedForms = selected;
-    html = `
-      <input type="text" id="infinitivInput" placeholder="原形 (Infinitiv)${chosen.hint ? ' (提示：' + chosen.hint + ')' : ''}" required>
-      <input type="text" id="${selected[0]}Input" placeholder="${placeholderselected[0]}" required>
-      <input type="text" id="${selected[1]}Input" placeholder="${placeholderselected[1]}" required>
-    `;
-  } else if (chosen.type === 'country') {
-    if (chosen.countable) {
-      html += `
-        <select id="numberInput" required>
-          <option value="singular">單數</option>
-          <option value="plural">複數</option>
-        </select>
-      `;
-    }
-    html += `<input type="text" id="deutschInput" placeholder="德文拼字${chosen.hint ? ' (提示：' + chosen.hint + ')' : ''}" required>`;
-  } else if (chosen.type === 'phrase' || SINGLE_INPUT_TYPES.has(chosen.type)) {
-    html = `<input type="text" id="deutschInput" placeholder="德文拼字${chosen.hint ? ' (提示：' + chosen.hint + ')' : ''}" required>`;
-  } else if (chosen.type === 'number') {
-    html = `<input type="text" id="deutschInput" placeholder="請輸入 ${chosen.number} 的德文拼字" required>`;
-  }
-
-  inputsDiv.insertAdjacentHTML('beforeend', html);
-  inputsDiv.style.display = 'block';
-  hardenInputsIn(inputsDiv);
-
-  setTimeout(() => {
-    const firstInput = document.querySelector('#inputs input, #inputs select');
-    if (firstInput) firstInput.focus();
-  }, 0);
-}
-
-// ========================================
-// 7) 檢查答案
+// 9) 檢查答案（嚴格版）
 // ========================================
 function checkAnswer() {
   const word = vocab[currentIndex];
-  const feedback = document.getElementById('feedback');
-  const showBtn = document.getElementById('showAnswer');
+  const feedback = document.getElementById("feedback");
+  const showBtn = document.getElementById("showAnswer");
 
-  if (!word) return;
-
-  feedback.style.display = 'block';
-  feedback.className = '';
-  currentErrors = [];
-
-  // 必填檢查
-  const missing = [];
-  if (word.type === 'noun') {
-    const di = document.getElementById('deutschInput');
-    const pi = document.getElementById('pluralInput');
-    const gi = document.getElementById('genderInput');
-    if (isBlankRequired(di)) missing.push('德文拼字');
-    if (word.countable && isBlankRequired(pi)) missing.push('複數形');
-    if ((word.gender || 'none') !== 'none' && (!gi || gi.value === '')) missing.push('性別');
-  } else if (word.type === 'verb') {
-    const ii = document.getElementById('infinitivInput');
-    if (isBlankRequired(ii)) missing.push('原形(Infinitiv)');
-    if (Array.isArray(word.selectedForms)) {
-      for (const f of word.selectedForms) {
-        const el = document.getElementById(f + 'Input');
-        if (isBlankRequired(el)) missing.push(f);
-      }
-    }
-  } else if (word.type === 'country') {
-    const di = document.getElementById('deutschInput');
-    if (isBlankRequired(di)) missing.push('德文拼字');
-    if (word.countable) {
-      const ni = document.getElementById('numberInput');
-      if (!ni || (ni.value !== 'singular' && ni.value !== 'plural')) missing.push('單/複數');
-    }
-  } else if (word.type === 'number' || word.type === 'phrase' || SINGLE_INPUT_TYPES.has(word.type)) {
-    const di = document.getElementById('deutschInput');
-    if (isBlankRequired(di)) missing.push('德文拼字');
-  }
-
-  if (missing.length > 0) {
-    feedback.textContent = '請先填完：' + missing.join('、');
-    feedback.className = 'incorrect';
-    showBtn.style.display = 'none';
+  if (!word) {
+    feedback.textContent = "（無題目）";
+    feedback.className = "incorrect";
+    feedback.style.display = "block";
+    showBtn.style.display = "none";
     return;
   }
 
-  // 比對
-  if (word.type === 'noun') {
-    const genderInput  = (document.getElementById('genderInput') || {}).value || 'none';
-    const deutschInput = normalizeGerman(document.getElementById('deutschInput').value.trim());
-    const pluralInput  = normalizeGerman((document.getElementById('pluralInput') || { value: '' }).value.trim());
+  feedback.style.display = "block";
+  currentErrors = [];
+  const missing = [];
 
-    const correctGender  = word.gender || 'none';
-    const correctDeutsch = normalizeGerman(word.deutsch || '');
-    const correctPlural  = normalizeGerman(word.plural || '');
-    const correctPluralAlt = normalizeGerman(word.Pl || '');
-
-    if (correctGender !== 'none' && genderInput !== correctGender)
-      currentErrors.push(`性別：${correctGender}`);
-    if (deutschInput !== correctDeutsch)
-      currentErrors.push(`德文：${word.deutsch}`);
+  // ---------- 必填檢查 ----------
+  if (word.type === "noun") {
+    const di = document.getElementById("deutschInput");
+    const pi = document.getElementById("pluralInput");
+    const gi = document.getElementById("genderInput");
+    if (isBlankRequired(di)) missing.push("德文拼字");
+    if (word.countable && isBlankRequired(pi)) missing.push("複數形");
+    if ((word.gender || "none") !== "none" && (!gi || gi.value === "")) missing.push("性別");
+  } else if (word.type === "verb") {
+    const ii = document.getElementById("infinitivInput");
+    if (isBlankRequired(ii)) missing.push("原形(Infinitiv)");
+    if (Array.isArray(word.selectedForms)) {
+      for (const f of word.selectedForms) {
+        const el = document.getElementById(f + "Input");
+        if (isBlankRequired(el)) missing.push(f);
+      }
+    }
+  } else if (word.type === "country") {
+    const di = document.getElementById("deutschInput");
+    if (isBlankRequired(di)) missing.push("德文拼字");
     if (word.countable) {
-      const okPlural = (pluralInput === correctPlural) || (word.Pl !== undefined && pluralInput === correctPluralAlt);
+      const ni = document.getElementById("numberInput");
+      if (!ni || (ni.value !== "singular" && ni.value !== "plural")) missing.push("單/複數");
+    }
+  } else if (word.type === "number" || word.type === "phrase" || SINGLE_INPUT_TYPES.has(word.type)) {
+    const di = document.getElementById("deutschInput");
+    if (isBlankRequired(di)) missing.push("德文拼字");
+  }
+
+  if (missing.length > 0) {
+    feedback.textContent = "請先填完： " + missing.join("、");
+    feedback.className = "incorrect";
+    showBtn.style.display = "none";
+    return;
+  }
+
+  // ---------- 實際比對 ----------
+  if (word.type === "noun") {
+    const genderInput  = (document.getElementById("genderInput") || {}).value || "none";
+    const deutschInput = normalizeGerman(document.getElementById("deutschInput").value.trim());
+    const pluralInput  = normalizeGerman((document.getElementById("pluralInput") || { value: "" }).value.trim());
+
+    const correctGender  = word.gender || "none";
+    const correctDeutsch = normalizeGerman(word.deutsch || "");
+    const correctPlural  = normalizeGerman(word.plural || "");
+    const correctPluralAlt = normalizeGerman(word.Pl || "");
+
+    if (correctGender !== "none" && genderInput !== correctGender) {
+      currentErrors.push(`性別：${correctGender}`);
+    }
+    if (deutschInput !== correctDeutsch) {
+      currentErrors.push(`德文：${word.deutsch}`);
+    }
+    if (word.countable) {
+      const okPlural =
+        pluralInput === correctPlural || (word.Pl !== undefined && pluralInput === correctPluralAlt);
       if (!okPlural) {
         const pluralAnswers = [word.plural];
         if (word.Pl) pluralAnswers.push(word.Pl);
-        currentErrors.push(`複數：${pluralAnswers.join(' 或 ')}`);
+        currentErrors.push(`複數：${pluralAnswers.join(" 或 ")}`);
       }
     }
-  } else if (word.type === 'verb') {
-    const infinitivInput = normalizeGerman(document.getElementById('infinitivInput').value.trim());
-    const correctInfinitiv = normalizeGerman(word.infinitiv || '');
+
+  } else if (word.type === "verb") {
+    const infinitivInput = normalizeGerman(document.getElementById("infinitivInput").value.trim());
+    const correctInfinitiv = normalizeGerman(word.infinitiv || "");
     if (infinitivInput !== correctInfinitiv) currentErrors.push(`原形：${word.infinitiv}`);
+
     for (const form of word.selectedForms) {
-      const input  = normalizeGerman(document.getElementById(form + 'Input').value.trim());
-      const correct = normalizeGerman(word[form] || '');
+      const input  = normalizeGerman(document.getElementById(form + "Input").value.trim());
+      const correct = normalizeGerman(word[form] || "");
       if (input !== correct) currentErrors.push(`${form}：${word[form]}`);
     }
-  } else if (word.type === 'country') {
-    const deutschInput = normalizeGerman(document.getElementById('deutschInput').value.trim());
-    const correctDeutsch = normalizeGerman(word.deutsch || '');
+
+  } else if (word.type === "country") {
+    const deutschInput = normalizeGerman(document.getElementById("deutschInput").value.trim());
+    const correctDeutsch = normalizeGerman(word.deutsch || "");
     if (deutschInput !== correctDeutsch) currentErrors.push(`德文：${word.deutsch}`);
+
     if (word.countable) {
-      const numberSelected = (document.getElementById('numberInput') || {}).value;
-      const should = word.plural ? 'plural' : 'singular';
-      if (numberSelected !== should) currentErrors.push(`單複數：${word.plural ? '複數' : '單數'}`);
+      const numberSelected = (document.getElementById("numberInput") || {}).value;
+      const should = word.plural ? "plural" : "singular";
+      if (numberSelected !== should) currentErrors.push(`單複數：${word.plural ? "複數" : "單數"}`);
     }
-  } else if (word.type === 'phrase') {
-    const input  = foldPhrase(document.getElementById('deutschInput').value);
+
+  } else if (word.type === "phrase") {
+    const input  = foldPhrase(document.getElementById("deutschInput").value);
     const answer = foldPhrase(word.deutsch);
     if (input !== answer) currentErrors.push(`德文：${word.deutsch}`);
-  } else if (SINGLE_INPUT_TYPES.has(word.type) || word.type === 'number') {
-    const deutschInput = normalizeGerman(document.getElementById('deutschInput').value.trim());
-    const correctDeutsch = normalizeGerman(word.deutsch || '');
-    if (deutschInput !== correctDeutsch) {
-      if (word.type === 'number')
-        currentErrors.push(`數字 ${word.number} 的正確德文：${word.deutsch}`);
-      else
-        currentErrors.push(`德文：${word.deutsch}`);
-    }
+
+  } else if (word.type === "number") {
+    // 顯示阿拉伯數字、只接受德文字（不接受阿拉伯數字）
+    const inp  = normalizeGerman(document.getElementById("deutschInput").value.trim());
+    const main = normalizeGerman(word.deutsch || "");
+    if (inp !== main) currentErrors.push(`數字 ${word.number} 的正確德文：${word.deutsch}`);
+
+  } else if (SINGLE_INPUT_TYPES.has(word.type)) {
+    const deutschInput = normalizeGerman(document.getElementById("deutschInput").value.trim());
+    const correctDeutsch = normalizeGerman(word.deutsch || "");
+    if (deutschInput !== correctDeutsch) currentErrors.push(`德文：${word.deutsch}`);
+  } else {
+    currentErrors.push("未知題型：" + word.type);
   }
 
-  // 結果
+  // ---------- 最終判定 ----------
   if (currentErrors.length === 0) {
-    feedback.textContent = '正確';
-    feedback.className = 'correct';
-    document.getElementById('next').disabled = false;
-    showBtn.style.display = 'none';
+    feedback.textContent = "正確";
+    feedback.className = "correct";
+    document.getElementById("next").disabled = false;
+    showBtn.style.display = "none";
   } else {
-    feedback.textContent = '錯誤';
-    feedback.className = 'incorrect';
-    showBtn.style.display = 'block';
-    document.getElementById('next').disabled = true;
+    feedback.textContent = "錯誤";
+    feedback.className = "incorrect";
+    showBtn.style.display = "block";
+    document.getElementById("next").disabled = true;
   }
+
+  saveVocab();
 }
 
 // ========================================
-// 8) 顯示答案 / 不知道
+// 10) 儲存 vocab（若你有做動態編輯用得到）
 // ========================================
-function buildCorrectAnswers(word) {
-  const list = [];
-  if (!word) return list;
-  if (word.type === 'noun') {
-    const g = word.gender || 'none';
-    const gLabel = {none: '無性別', der: 'der (陽性)', das: 'das (中性)', die: 'die (陰性)'}[g] || g;
-    if (g !== 'none') list.push(`性別：${gLabel}`);
-    if (word.deutsch) list.push(`德文：${word.deutsch}`);
-    if (word.countable) {
-      const pluralAns = [];
-      if (word.plural) pluralAns.push(word.plural);
-      if (word.Pl) pluralAns.push(word.Pl);
-      if (pluralAns.length) list.push(`複數：${pluralAns.join(' 或 ')}`);
-    }
-  } else if (word.type === 'verb') {
-    if (word.infinitiv) list.push(`原形：${word.infinitiv}`);
-    for (const f of ['ich','du','er','wir','ihr','sie']) if (word[f]) list.push(`${f}：${word[f]}`);
-  } else if (word.type === 'country') {
-    if (word.deutsch) list.push(`德文：${word.deutsch}`);
-    if (word.countable) list.push(`單複數：${word.plural ? '複數' : '單數'}`);
-  } else if (word.type === 'number') {
-    if (word.deutsch) list.push(`數字 ${word.number} 的正確德文：${word.deutsch}`);
-  } else {
-    if (word.deutsch) list.push(`德文：${word.deutsch}`);
-  }
-  return list;
-}
-function showAnswer() {
-  const feedback = document.getElementById('feedback');
-  const items = buildCorrectAnswers(vocab[currentIndex]);
-  feedback.style.display = 'block';
-  feedback.className = 'incorrect';
-  feedback.innerHTML = `<ul><li><strong>正確答案：</strong></li>${items.map(it=>`<li>${it}</li>`).join('')}</ul>`;
-  document.getElementById('next').disabled = false;
-  document.getElementById('showAnswer').style.display = 'none';
-}
-function dontKnow() {
-  showAnswer();
-  document.getElementById('dontKnow').style.display = 'none';
+function saveVocab() {
+  localStorage.setItem("vocab", JSON.stringify(vocab));
 }
 
 // ========================================
-// 9) 啟動
+// 11) 啟動
 // ========================================
-nextWord();
+safeNext();
