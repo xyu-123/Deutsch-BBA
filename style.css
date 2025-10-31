@@ -1,62 +1,83 @@
-/* === 基本排版 === */
-body {
-  font-family: Arial, sans-serif;
-  text-align: center;
-  margin: 0;
-  padding: 40px 10px;
-  background-color: #f5f7fa;
+/* === 全域字體與縮放 === */
+html {
+  font-size: 20px; /* 整體放大一級 */
 }
 
+body {
+  font-family: "Noto Sans TC", "Segoe UI", Arial, sans-serif;
+  text-align: center;
+  margin: 0;
+  padding: 50px 20px;
+  background-color: #f5f7fa;
+  line-height: 1.6;
+}
+
+/* === 標題區 === */
 h1 {
-  margin-bottom: 25px;
+  margin-bottom: 40px;
+  font-size: 2.2rem; /* 更大標題 */
+  letter-spacing: 1px;
 }
 
 /* === 卡片容器 === */
 #card {
-  width: 420px;
+  width: 95%;
+  max-width: 650px; /* 放寬原本的 420px */
   margin: 0 auto;
-  padding: 25px;
-  border: 2px solid #007bff;
-  border-radius: 10px;
+  padding: 40px 30px;
+  border: 3px solid #007bff;
+  border-radius: 12px;
   background: #ffffff;
   text-align: left;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
 
 /* === 課程篩選 === */
 #lessonContainer {
   text-align: left;
-  margin: 20px 0 15px 0;   /* 與標題、題目拉開距離 */
+  margin: 28px 0 24px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-start;
 }
 #lessonContainer label {
-  display: inline-block;
-  margin-right: 15px;
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 1rem;
+  cursor: pointer;
 }
 #lessonContainer input[type="checkbox"] {
-  margin-right: 5px;
-  vertical-align: middle;
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
-/* === 翻譯文字 === */
+/* === 題目文字 === */
 #translation {
-  font-size: 24px;
-  margin-bottom: 14px;
+  font-size: 1.6rem;
+  margin: 24px 0 18px 0;
   text-align: center;
+  font-weight: bold;
 }
 
 /* === 輸入區 === */
 #inputs {
-  margin: 15px 0;
+  margin: 20px 0;
   text-align: center;
 }
 #inputs input,
 #inputs select {
-  margin: 6px 0;
-  padding: 8px;
-  width: 85%;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  margin: 10px 0;
+  padding: 12px;
+  width: 90%;
+  font-size: 1.1rem;
+  border: 2px solid #ccc;
+  border-radius: 8px;
 }
 
 /* === 按鈕區 === */
@@ -64,23 +85,23 @@ h1 {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 12px;               /* 按鈕間距 */
-  margin-top: 18px;
+  gap: 14px;
+  margin-top: 28px;
 }
 #controls button {
-  padding: 8px 16px;
-  font-size: 15px;
+  padding: 10px 22px;
+  font-size: 1.05rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   background-color: #007bff;
   color: white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-  transition: background-color 0.2s, transform 0.1s;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.25s, transform 0.15s;
 }
 #controls button:hover {
   background-color: #0056b3;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 #controls button:disabled {
   background-color: #ccc;
@@ -89,32 +110,39 @@ h1 {
   box-shadow: none;
 }
 
-/* === 回饋區 === */
+/* === 回饋訊息 === */
 #feedback {
   text-align: center;
-  margin-top: 14px;
+  margin-top: 20px;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 1.2rem;
 }
 #feedback.correct {
   color: #155724;
   background: #d4edda;
-  border-radius: 6px;
-  padding: 6px 10px;
+  border-radius: 8px;
+  padding: 8px 12px;
 }
 #feedback.incorrect {
   color: #721c24;
   background: #f8d7da;
-  border-radius: 6px;
-  padding: 6px 10px;
+  border-radius: 8px;
+  padding: 8px 12px;
 }
 
-/* ✅ 很重要：不要有任何把 #check 隱藏的規則！
-   例如以下這些通通不要出現在檔案裡：
-   #check { display: none !important; }
-   #controls #check { display: none !important; }
-   button#check { display: none !important; }
-   button[id="check"] { display: none !important; }
-*/
-
+/* === 響應式：手機時自動縮小一點 === */
+@media (max-width: 600px) {
+  html {
+    font-size: 17px;
+  }
+  #card {
+    padding: 25px 15px;
+  }
+  #lessonContainer {
+    gap: 8px;
+  }
+  #controls {
+    gap: 10px;
+  }
+}
 
