@@ -137,21 +137,31 @@ function nextWord() {
 
   if (vocab.length === 0) return;
 
- // 🟩 改良版課程篩選 — 只有勾選 "Numbers" 才會出現數字題
-const checked = Array.from(document.querySelectorAll('#lessonContainer input[type=checkbox]:checked')).map(ch => ch.value);
+// ✅ 只有勾選 "Numbers" 才允許 number 題；其餘情況一律排除 number 題
+const checked = Array.from(
+  document.querySelectorAll('#lessonContainer input[type=checkbox]:checked')
+).map(ch => (ch.value || '').trim());
 
-let pool;
-if (checked.includes('Numbers')) {
-  // 勾選了 Numbers，就取勾選的全部
-  pool = vocab.filter(w => checked.includes((w.lesson || '')));
-} else {
-  // 沒勾 Numbers，就排除 Numbers 題
-  pool = vocab.filter(w =>
-    checked.length === 0
-      ? (w.lesson || '') !== 'Numbers'
-      : checked.includes((w.lesson || '')) && (w.lesson || '') !== 'Numbers'
-  );
-}  const chosen = pool[Math.floor(Math.random() * pool.length)];
+const includeNumbers = checked.includes('Numbers');
+
+let pool = vocab.filter(w => {
+  const lesson = ((w.lesson ?? '') + '').trim();
+
+  if (w.type === 'number') {
+    // 數字題：只有在勾選 Numbers 時才出現；若還勾了別的課程，也要同時匹配
+    if (!includeNumbers) return false;
+    return checked.length === 0 || checked.includes(lesson) || lesson === 'Numbers';
+  }
+
+  // 非數字題：若完全沒勾任何課程，就排除 Numbers 題；有勾就照清單過濾
+  if (checked.length === 0) return lesson !== 'Numbers';
+  return checked.includes(lesson);
+});
+
+// 防呆：若剛好被篩到空集合，退回「排除數字題」的全庫
+if (pool.length === 0) {
+  pool = vocab.filter(w => w.type !== 'number' && ((w.lesson ?? '').trim() !== 'Numbers'));
+} const chosen = pool[Math.floor(Math.random() * pool.length)];
   currentIndex = vocab.indexOf(chosen);
 
   // 題面
