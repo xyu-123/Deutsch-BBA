@@ -66,6 +66,11 @@ window.vocabNouns = [
     { type: 'country', deutsch: 'Isfahan', chinese: '伊斯法罕', countable: false, lesson: 'lesson 1' },
     { type: 'country', deutsch: 'Leipzig', chinese: '萊比錫', countable: false, lesson: 'lesson 1' },
     { type: 'country', deutsch: 'Auckland', chinese: '奧克蘭', countable: false, lesson: 'lesson 1' },
+    { type: 'country', deutsch: 'Syrien', chinese: '敘利亞', countable: false, lesson: 'lesson 1' },
+    { type: 'country', deutsch: 'Argentinien', chinese: '阿根廷', countable: false, lesson: 'lesson 1' },
+    { type: 'country', deutsch: 'Dortmund', chinese: '多特蒙德', countable: false, lesson: 'lesson 1' },
+    { type: 'country', deutsch: 'Torrent', chinese: '多倫特', countable: false, lesson: 'lesson 1' },
+    
 
 //其餘名詞
     //lesson 0
