@@ -24,6 +24,6 @@ window.vocabVerbs = [
     //lesson 2
     { type: 'verb', infinitiv: 'bekommen', ich: 'bekomme', du: 'bekommst', er: 'bekommt', wir: 'bekommen', ihr: 'bekommt', sie: 'bekommen', chinese: '得到', lesson: 'lesson 2' },
     { type: 'verb', infinitiv: 'sagen', ich: 'sage', du: 'sagst', er: 'sagt', wir: 'sagen', ihr: 'sagt', sie: 'sagen', chinese: '說... 講...', lesson: 'lesson 2' },
-    { type: 'verb', infinitiv: 'haben', ich: 'habe', du: 'habst', er: 'habt', wir: 'haben', ihr: 'habt', sie: 'haben', chinese: '有...', lesson: 'lesson 2' },
+    { type: 'verb', infinitiv: 'haben', ich: 'habe', du: 'hast', er: 'hat', wir: 'haben', ihr: 'habt', sie: 'haben', chinese: '有...', lesson: 'lesson 2' },
 
 ];
