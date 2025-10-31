@@ -35,7 +35,8 @@ h1 {
   margin: 15px 0;
   text-align: center;
 }
-#inputs input, #inputs select {
+#inputs input,
+#inputs select {
   margin: 6px 0;
   padding: 8px;
   width: 85%;
@@ -45,11 +46,13 @@ h1 {
 
 /* === 按鈕區 === */
 #controls {
-  text-align: center;
-  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;             /* 按鈕間距 */
+  margin-top: 18px;
 }
 
-/* 讓按鈕之間有間距且樣式一致 */
 #controls button {
   margin: 6px 8px;
   padding: 8px 16px;
@@ -98,7 +101,7 @@ h1 {
 /* === 課程篩選 === */
 #lessonContainer {
   text-align: left;
-  margin: 10px 0;
+  margin: 18px 0; /* 與標題距離拉遠 */
 }
 #lessonContainer label {
   display: inline-block;
@@ -109,14 +112,12 @@ h1 {
   margin-right: 5px;
   vertical-align: middle;
 }
-/* 永久隱藏檢查按鈕（多重選擇器提高權重） */
-#check,
-#controls #check,
-button#check,
-button[id="check"] {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
+
+/* === 確保檢查按鈕能顯示 === */
+#controls button#check {
+  display: inline-block !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
 
