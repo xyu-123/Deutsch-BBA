@@ -23,6 +23,21 @@ h1 {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
+/* === 課程篩選 === */
+#lessonContainer {
+  text-align: left;
+  margin: 20px 0 15px 0;   /* 與標題、題目拉開距離 */
+}
+#lessonContainer label {
+  display: inline-block;
+  margin-right: 15px;
+  white-space: nowrap;
+}
+#lessonContainer input[type="checkbox"] {
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
 /* === 翻譯文字 === */
 #translation {
   font-size: 24px;
@@ -49,10 +64,9 @@ h1 {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 12px; /* 按鈕間距 */
+  gap: 12px;               /* 按鈕間距 */
   margin-top: 18px;
 }
-
 #controls button {
   padding: 8px 16px;
   font-size: 15px;
@@ -64,12 +78,10 @@ h1 {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
   transition: background-color 0.2s, transform 0.1s;
 }
-
 #controls button:hover {
   background-color: #0056b3;
   transform: translateY(-1px);
 }
-
 #controls button:disabled {
   background-color: #ccc;
   color: #666;
@@ -97,26 +109,12 @@ h1 {
   padding: 6px 10px;
 }
 
-/* === 課程篩選 === */
-#lessonContainer {
-  text-align: left;
-  margin: 20px 0 15px 0; /* 與標題距離拉開 */
-}
-#lessonContainer label {
-  display: inline-block;
-  margin-right: 15px;
-  white-space: nowrap;
-}
-#lessonContainer input[type="checkbox"] {
-  margin-right: 5px;
-  vertical-align: middle;
-}
-
-/* === 確保檢查按鈕能顯示 === */
-#controls button#check {
-  display: inline-block !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
+/* ✅ 很重要：不要有任何把 #check 隱藏的規則！
+   例如以下這些通通不要出現在檔案裡：
+   #check { display: none !important; }
+   #controls #check { display: none !important; }
+   button#check { display: none !important; }
+   button[id="check"] { display: none !important; }
+*/
 
 
