@@ -145,4 +145,31 @@ h1 {
     gap: 10px;
   }
 }
+/* --- 強制整頁置中 & 放寬卡片 --- */
+h1 {
+  text-align: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
 
+#quiz {
+  width: 100%;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+#card {
+  width: 95% !important;
+  max-width: 650px !important;   /* 想更寬就調這裡 */
+  margin: 0 auto !important;     /* 真的置中 */
+  text-align: left;               /* 內容仍維持靠左排版 */
+}
+
+#translation,
+#controls {
+  text-align: center !important;
+}
+
+#inputs {
+  text-align: center !important;
+}
