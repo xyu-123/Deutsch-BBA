@@ -114,7 +114,7 @@ window.vocabNouns = [
     { type: 'noun', deutsch: 'Mutter', chinese: '母親', gender: 'die', plural: 'Mütter', Pl: '-:', countable: true, lesson: 'lesson 1' },
     { type: 'noun', deutsch: 'Muttersprache', chinese: '母語', gender: 'die', plural: 'Muttersprachen', Pl: '-n', countable: true, lesson: 'lesson 1' },
     { type: 'noun', deutsch: 'Ländername', chinese: '國名', gender: 'der', plural: 'Ländernamen', Pl: '-n', countable: true, lesson: 'lesson 1' },
-    { type: 'noun', deutsch: 'Person', chinese: '國家', gender: 'die', plural: 'Personen', Pl: '-en', countable: true, lesson: 'lesson 1' },
+    { type: 'noun', deutsch: 'Person', chinese: '人', gender: 'die', plural: 'Personen', Pl: '-en', countable: true, lesson: 'lesson 1' },
     { type: 'noun', deutsch: 'Tag', chinese: '天', gender: 'der', plural: 'Tage', Pl: '-e', countable: true, lesson: 'lesson 1' },
     { type: 'noun', deutsch: 'Sommer', chinese: '夏天', gender: 'der', countable: false, lesson: 'lesson 1' },
     { type: 'noun', deutsch: 'Kurs', chinese: '課程', gender: 'der', plural: 'Kurse', Pl: '-e', countable: true, lesson: 'lesson 1' },
