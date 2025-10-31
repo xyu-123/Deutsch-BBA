@@ -35,7 +35,7 @@ window.vocabOther = [
     { type: 'adverb', deutsch: 'dort', chinese: '那裡', lesson: 'lesson 1' },
     { type: 'adverb', deutsch: 'super', chinese: '讚 棒地', lesson: 'lesson 1' },
     { type: 'adverb', deutsch: 'nicht', chinese: '(否定)', lesson: 'lesson 1' },
-    { type: 'adverb', deutsch: 'nach', chinese: '仍然', lesson: 'lesson 1' },
+    { type: 'adverb', deutsch: 'noch', chinese: '仍然', lesson: 'lesson 1' },
     { type: 'adverb', deutsch: 'jetzt', chinese: '現在', lesson: 'lesson 1' },
     { type: 'adverb', deutsch: 'auch', chinese: '也', lesson: 'lesson 1' },
 
