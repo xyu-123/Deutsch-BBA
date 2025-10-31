@@ -16,7 +16,7 @@ window.vocabVerbs = [
     { type: 'verb', infinitiv: 'leben', ich: 'lebe', du: 'lebst', er: 'lebt', wir: 'leben', ihr: 'lebt', sie: 'leben', chinese: '住', lesson: 'lesson 1', hint: 'l' },
     { type: 'verb', infinitiv: 'wohnen', ich: 'wohne', du: 'wohnst', er: 'wohnt', wir: 'wohnen', ihr: 'wohnt', sie: 'wohnen', chinese: '住', lesson: 'lesson 1', hint: 'w' },
     { type: 'verb', infinitiv: 'machen', ich: 'mache', du: 'machst', er: 'macht', wir: 'machen', ihr: 'macht', sie: 'machen', chinese: '做...', lesson: 'lesson 1' },
-    { type: 'verb', infinitiv: 'lernen', ich: 'lerne', du: 'lernst', er: 'lernt', wir: 'lernen', ihr: 'lernt', sie: 'lernen', chinese: '做...', lesson: 'lesson 1' },
+    { type: 'verb', infinitiv: 'lernen', ich: 'lerne', du: 'lernst', er: 'lernt', wir: 'lernen', ihr: 'lernt', sie: 'lernen', chinese: '學習', lesson: 'lesson 1' },
     { type: 'verb', infinitiv: 'heißen', ich: 'heiße', du: 'heißt', er: 'heißt', wir: 'heißen', ihr: 'heißt', sie: 'heißen', chinese: '叫做 稱作', lesson: 'lesson 1' },
     { type: 'verb', infinitiv: 'kommen', ich: 'komme', du: 'kommst', er: 'kommt', wir: 'kommen', ihr: 'kommt', sie: 'kommen', chinese: '來(自)', lesson: 'lesson 1' },
     { type: 'verb', infinitiv: 'sprechen', ich: 'spreche', du: 'sprichst', er: 'spricht', wir: 'sprechen', ihr: 'sprecht', sie: 'sprechen', chinese: '說(語言)(能力)', lesson: 'lesson 1' },
