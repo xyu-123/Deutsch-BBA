@@ -1,108 +1,73 @@
-/* === 全域字體與縮放 === */
-html {
-  font-size: 20px; /* 整體放大一級 */
-}
-
+/* === 基本排版 === */
 body {
-  font-family: "Noto Sans TC", "Segoe UI", Arial, sans-serif;
+  font-family: Arial, sans-serif;
   text-align: center;
   margin: 0;
-  padding: 50px 20px;
+  padding: 40px 10px;
   background-color: #f5f7fa;
-  line-height: 1.6;
 }
 
-/* === 標題區 === */
 h1 {
-  margin-bottom: 40px;
-  font-size: 2.2rem; /* 更大標題 */
-  letter-spacing: 1px;
+  margin-bottom: 25px;
 }
 
 /* === 卡片容器 === */
 #card {
-  width: 95%;
-  max-width: 650px; /* 放寬原本的 420px */
+  width: 420px;
   margin: 0 auto;
-  padding: 40px 30px;
-  border: 3px solid #007bff;
-  border-radius: 12px;
+  padding: 25px;
+  border: 2px solid #007bff;
+  border-radius: 10px;
   background: #ffffff;
   text-align: left;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* === 課程篩選 === */
-#lessonContainer {
-  text-align: left;
-  margin: 28px 0 24px 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: flex-start;
-}
-#lessonContainer label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  background: #fff;
-  font-size: 1rem;
-  cursor: pointer;
-}
-#lessonContainer input[type="checkbox"] {
-  width: 1.2rem;
-  height: 1.2rem;
-}
-
-/* === 題目文字 === */
+/* === 翻譯文字 === */
 #translation {
-  font-size: 1.6rem;
-  margin: 24px 0 18px 0;
+  font-size: 24px;
+  margin-bottom: 14px;
   text-align: center;
-  font-weight: bold;
 }
 
 /* === 輸入區 === */
 #inputs {
-  margin: 20px 0;
+  margin: 15px 0;
   text-align: center;
 }
-#inputs input,
-#inputs select {
-  margin: 10px 0;
-  padding: 12px;
-  width: 90%;
-  font-size: 1.1rem;
-  border: 2px solid #ccc;
-  border-radius: 8px;
+#inputs input, #inputs select {
+  margin: 6px 0;
+  padding: 8px;
+  width: 85%;
+  border: 1px solid #ccc;
+  border-radius: 6px;
 }
 
 /* === 按鈕區 === */
 #controls {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin-top: 28px;
+  text-align: center;
+  margin-top: 16px;
 }
+
+/* 讓按鈕之間有間距且樣式一致 */
 #controls button {
-  padding: 10px 22px;
-  font-size: 1.05rem;
+  margin: 6px 8px;
+  padding: 8px 16px;
+  font-size: 15px;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   background-color: #007bff;
   color: white;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.25s, transform 0.15s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  transition: background-color 0.2s, transform 0.1s;
 }
+
 #controls button:hover {
   background-color: #0056b3;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
+
 #controls button:disabled {
   background-color: #ccc;
   color: #666;
@@ -110,66 +75,87 @@ h1 {
   box-shadow: none;
 }
 
-/* === 回饋訊息 === */
+/* === 回饋區 === */
 #feedback {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 14px;
   font-weight: bold;
-  font-size: 1.2rem;
+  font-size: 18px;
 }
 #feedback.correct {
   color: #155724;
   background: #d4edda;
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: 6px;
+  padding: 6px 10px;
 }
 #feedback.incorrect {
   color: #721c24;
   background: #f8d7da;
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: 6px;
+  padding: 6px 10px;
 }
 
-/* === 響應式：手機時自動縮小一點 === */
-@media (max-width: 600px) {
-  html {
-    font-size: 17px;
-  }
-  #card {
-    padding: 25px 15px;
-  }
-  #lessonContainer {
-    gap: 8px;
-  }
-  #controls {
-    gap: 10px;
-  }
+/* === 課程篩選 === */
+#lessonContainer {
+  text-align: left;
+  margin: 10px 0;
 }
-/* --- 強制整頁置中 & 放寬卡片 --- */
-h1 {
-  text-align: center !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
+#lessonContainer label {
+  display: inline-block;
+  margin-right: 15px;
+  white-space: nowrap;
 }
-
-#quiz {
-  width: 100%;
-  display: flex !important;
-  justify-content: center !important;
+#lessonContainer input[type="checkbox"] {
+  margin-right: 5px;
+  vertical-align: middle;
+}
+/* 整張卡片固定寬度、置中 */
+#card{
+  max-width: 480px;     /* 稍微寬一點比較自然 */
+  width: 92vw;          /* 手機也能自適應 */
+  margin: 0 auto;       /* 置中 */
 }
 
-#card {
-  width: 95% !important;
-  max-width: 650px !important;   /* 想更寬就調這裡 */
-  margin: 0 auto !important;     /* 真的置中 */
-  text-align: left;               /* 內容仍維持靠左排版 */
+/* 課程篩選：置中、一行排不下就自動換行 */
+#lessonContainer{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center; /* 中間 */
+  gap: 8px;
+  margin: 10px 0;
+  text-align: left;        /* 讓 label 內容保持左對齊 */
+}
+#lessonContainer label{
+  margin: 0;               /* 用 gap 管間距即可 */
 }
 
-#translation,
-#controls {
-  text-align: center !important;
+/* 輸入區：欄位垂直堆疊、整體置中 */
+#inputs{
+  display: flex;
+  flex-direction: column;
+  align-items: center;   /* 置中 */
+  gap: 10px;
+  margin: 16px 0;
+}
+#inputs input, #inputs select{
+  width: 88%;
+  max-width: 360px;      /* 避免超寬 */
 }
 
-#inputs {
-  text-align: center !important;
+/* 按鈕列：橫向置中、必要時自動換行 */
+#controls{
+  display: flex;
+  justify-content: center;  /* 中間 */
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
 }
+
+/* 讓回饋文字也在中間看起來一致 */
+#feedback{
+  text-align: center;
+}
+
+
+
