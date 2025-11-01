@@ -1,9 +1,10 @@
 /* ==========================================================================
- *  Quiz App (Stable & Clean Single File) + TTS (de-DE)
+ *  Quiz App (Stable & Clean Single File) + TTS (de-DE) + Type/Lesson Filters
  *  - iOS/Safari proof: block Enter/NumpadEnter, disable autocorrect/capitalize
  *  - Token-locked nextWord()
  *  - MutationObserver-safe with de-dup (dataset.hardened)
  *  - TTS: German voice pick, autoplay toggle, speak button
+ *  - Type sidebar + Lesson chips (multi-select); pool 即時過濾
  *  - All bindings after DOMContentLoaded; null-safe; no global leaks
  * ========================================================================== */
 (() => {
@@ -12,7 +13,8 @@
   // -----------------------------
   // State
   // -----------------------------
-  let vocab = Array.isArray(window.vocabList) ? [...window.vocabList] : [];
+  const BASE = Array.isArray(window.vocabList) ? window.vocabList.slice() : [];
+  let vocab = BASE.slice();       // 仍保留，但實際抽題用 filter 後的 pool
   let currentIndex = -1;
   let correctConfirmed = false;
   let currentErrors = [];
@@ -25,6 +27,7 @@
   // -----------------------------
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const uniq = arr => Array.from(new Set(arr)).filter(Boolean);
 
   function normalizeGerman(s) {
     if (!s && s !== '') return '';
@@ -56,7 +59,7 @@
   // -----------------------------
   // TTS（德文發音）模組
   // -----------------------------
-  const TTS = { enabled: true, voice: null, rate: 1.0, pitch: 1.0, ready: false };
+  const TTS = { enabled: false, voice: null, rate: 1.0, pitch: 1.0, ready: false };
 
   function pickGermanVoice() {
     const synth = window.speechSynthesis;
@@ -89,18 +92,18 @@
   }
 
   function speakDE(text, opts = {}) {
-  const force = opts.force === true;
-  if ((!TTS.enabled && !force) || !text) return;
-  const synth = window.speechSynthesis;
-  if (!synth) return;
-  try { synth.cancel(); } catch {}
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'de-DE';
-  if (TTS.voice) u.voice = TTS.voice;
-  u.rate = TTS.rate;
-  u.pitch = TTS.pitch;
-  synth.speak(u);
-}
+    const force = opts.force === true;
+    if ((!TTS.enabled && !force) || !text) return;
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    try { synth.cancel(); } catch {}
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'de-DE';
+    if (TTS.voice) u.voice = TTS.voice;
+    u.rate = TTS.rate;
+    u.pitch = TTS.pitch;
+    synth.speak(u);
+  }
 
   function textForSpeak(word) {
     if (!word) return '';
@@ -146,28 +149,113 @@
   }
 
   // -----------------------------
-  // Lesson Checkboxes
+  // 篩選 UI：Lesson Chips + Type Sidebar
   // -----------------------------
-  function populateLessonCheckboxes() {
-    const container = $('#lessonContainer');
-    if (!container) return;
-    const set = new Set();
-    vocab.forEach(w => set.add((w.lesson !== undefined ? w.lesson : '')));
-    container.innerHTML = '';
-    Array.from(set).forEach(lesson => {
-      const val = lesson || '';
-      const labelText = lesson === '' ? '未分類' : lesson;
-      const wrapper = document.createElement('label');
-      Object.assign(wrapper.style, {
-        display: 'inline-flex', alignItems: 'center', gap: '6px',
-        padding: '4px 6px', border: '1px solid #ddd', borderRadius: '6px', background: '#fff'
+  function buildLessonChips() {
+    const box = $('#lessonContainer');
+    if (!box) return;
+    const lessons = uniq(BASE.map(o => o.lesson).filter(Boolean)).sort();
+    box.innerHTML = '';
+    lessons.forEach(lsn => {
+      const chip = document.createElement('span');
+      chip.className = 'chip active';
+      chip.dataset.lesson = lsn;
+      chip.textContent = lsn;
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('active');
+        onFiltersChanged();
       });
-      const cb = document.createElement('input');
-      cb.type = 'checkbox'; cb.value = val; cb.name = 'lessonCheckbox';
-      const span = document.createElement('span'); span.textContent = labelText;
-      wrapper.append(cb, span);
-      container.appendChild(wrapper);
+      box.appendChild(chip);
     });
+  }
+
+  // ✅ 全選 / 全不選：第一次點「全部」→ 取消全選；第二次點 → 全選
+  function buildTypeSidebar() {
+    const box = $('#type-filters');
+    if (!box) return;
+
+    const types = uniq(BASE.map(o => o.type).filter(Boolean)).sort();
+    box.innerHTML = '';
+    types.forEach(t => {
+      const id = 'type_' + t.replace(/\W+/g, '_');
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="checkbox" id="${id}" value="${t}"> <span>${t}</span>`;
+      box.appendChild(label);
+    });
+
+    // 初始：全部勾選
+    box.querySelectorAll('input[type=checkbox]').forEach(ch => ch.checked = true);
+
+    const resetBtn = $('#type-reset');
+    if (resetBtn) {
+      // 用 dataset.mode 控制下一次點擊的行為：'all' 代表目前為全選狀態，下次點要「全不選」
+      resetBtn.dataset.mode = 'all';
+      resetBtn.textContent = '全部'; // 顯示文字
+
+      resetBtn.onclick = () => {
+        const boxes = box.querySelectorAll('input[type=checkbox]');
+        const mode = resetBtn.dataset.mode;
+
+        if (mode === 'all') {
+          // 目前全選 → 取消全選
+          boxes.forEach(b => b.checked = false);
+          resetBtn.dataset.mode = 'none';
+          resetBtn.textContent = '全選';
+        } else {
+          // 目前全不選 → 全選
+          boxes.forEach(b => b.checked = true);
+          resetBtn.dataset.mode = 'all';
+          resetBtn.textContent = '全部';
+        }
+        onFiltersChanged();
+      };
+    }
+
+    // 任一勾選變更時，同步按鈕文字與狀態
+    box.addEventListener('change', () => {
+      const boxes = Array.from(box.querySelectorAll('input[type=checkbox]'));
+      const allChecked = boxes.every(b => b.checked);
+      if (resetBtn) {
+        if (allChecked) {
+          resetBtn.dataset.mode = 'all';
+          resetBtn.textContent = '全部';
+        } else {
+          resetBtn.dataset.mode = 'none';
+          resetBtn.textContent = '全選';
+        }
+      }
+      onFiltersChanged();
+    });
+  }
+
+  function getActiveLessons() {
+    return Array.from(document.querySelectorAll('#lessonContainer .chip.active'))
+      .map(c => c.dataset.lesson);
+  }
+
+  function getActiveTypes() {
+    return Array.from(document.querySelectorAll('#type-filters input[type=checkbox]:checked'))
+      .map(c => c.value);
+  }
+
+  function filteredPool() {
+    const ls = new Set(getActiveLessons());
+    const ts = new Set(getActiveTypes());
+    let pool = BASE.filter(w => (!ls.size || ls.has(w.lesson)) && (!ts.size || ts.has(w.type)));
+    // 若完全未選任何 lesson（ls.size === 0），則可選擇排除 Numbers
+    if (!ls.size) {
+      pool = pool.filter(w => (w.lesson || '') !== 'Numbers');
+    }
+    if (pool.length === 0) {
+      // 保底：至少不要只剩 Numbers
+      pool = BASE.filter(w => (w.lesson || '') !== 'Numbers' && (!ts.size || ts.has(w.type)));
+    }
+    return pool;
+  }
+
+  function onFiltersChanged() {
+    // 這裡保留給未來顯示計數等用途
+    // 例如：document.title = `題庫可抽：${filteredPool().length}`;
   }
 
   // -----------------------------
@@ -231,7 +319,6 @@
     nextBtn.disabled = false;
     showBtn.style.display = 'none';
 
-    // 顯示答案後也發音（方便對照）
     const wordForTTS2 = vocab[currentIndex];
     speakDE(textForSpeak(wordForTTS2));
   }
@@ -287,20 +374,22 @@
     correctConfirmed = false;
     const showBtn = $('#showAnswer');
     if (showBtn) showBtn.style.display = 'none';
-    if (vocab.length === 0) return;
 
     const nextBtn = $('#next');
     if (nextBtn) nextBtn.disabled = true;
 
-    // 依課程勾選篩選；未勾選時排除 Numbers 題
-    const checked = $$(`#lessonContainer input[type=checkbox]:checked`).map(ch => ch.value);
-    let pool = (checked.length === 0)
-      ? vocab.filter(w => (w.lesson || '') !== 'Numbers')
-      : vocab.filter(w => checked.includes((w.lesson || '')));
-    if (pool.length === 0) pool = vocab.filter(w => (w.lesson || '') !== 'Numbers');
+    // 依「lesson chips + type 勾選」動態取得 pool
+    const pool = filteredPool();
+    if (!pool.length) {
+      const translationDiv = $('#translation');
+      if (translationDiv) translationDiv.textContent = '（目前篩選沒有可出題項）';
+      if (nextBtn) nextBtn.disabled = false;
+      return;
+    }
 
     const chosen = pool[Math.floor(Math.random() * pool.length)];
     currentIndex = vocab.indexOf(chosen);
+    if (currentIndex < 0) currentIndex = BASE.indexOf(chosen); // 保底
 
     const translationDiv = $('#translation');
     if (translationDiv) {
@@ -383,7 +472,7 @@
     }
 
     // 出題後自動發音
-    const wordForTTS = vocab[currentIndex];
+    const wordForTTS = chosen;
     speakDE(textForSpeak(wordForTTS));
   }
 
@@ -391,7 +480,7 @@
   // checkAnswer
   // -----------------------------
   function checkAnswer() {
-    const word = vocab[currentIndex];
+    const word = (currentIndex >= 0 ? vocab[currentIndex] : null) || null;
     const feedback = $('#feedback');
     const showBtn = $('#showAnswer');
     const nextBtn = $('#next');
@@ -567,7 +656,9 @@
       mo.observe(box, { childList: true, subtree: true });
     }
 
-    populateLessonCheckboxes();
+    // ---- 建立篩選 UI ----
+    buildLessonChips();
+    buildTypeSidebar();  // ← 已含自動「全選」及「全部↔全選」切換
 
     // --- 初始化 TTS，並在首次互動時確保可用（iOS 友善） ---
     initTTS();
@@ -586,8 +677,9 @@
       speakBtn.textContent = '🔊 發音';
       speakBtn.style.marginLeft = '8px';
       speakBtn.addEventListener('click', () => {
-        const word = vocab[currentIndex];
-        speakDE(textForSpeak(word));
+        const pool = filteredPool();
+        const word = (currentIndex >= 0 && pool.length) ? (vocab[currentIndex] || pool[0]) : null;
+        speakDE(textForSpeak(word || pool[0]));
       });
 
       // 自動發音開關
@@ -597,12 +689,11 @@
       const autoCk = document.createElement('input');
       autoCk.type = 'checkbox';
       autoCk.id = 'autoSpeak';
-      autoCk.checked = true;
+      autoCk.checked = false;
       autoCk.addEventListener('change', () => { TTS.enabled = autoCk.checked; });
       toggleWrap.appendChild(autoCk);
       toggleWrap.appendChild(document.createTextNode(' 自動發音'));
 
-      // 插到「檢查」按鈕旁邊；找不到就加在 controls
       const anchor = document.getElementById('check') || controls.lastElementChild;
       if (anchor && anchor.parentNode) {
         anchor.parentNode.insertBefore(speakBtn, anchor.nextSibling);
@@ -612,7 +703,7 @@
       }
     })();
 
-    // 起題（若頁面載入時 vocab 為空，這裡不會出錯，只是不出題）
+    // 起題（若 pool 空，nextWord 會顯示提示）
     safeNext();
   });
 })();
