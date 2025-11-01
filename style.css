@@ -1,3 +1,9 @@
+/* ============================================================
+ *  Deutsch Vocabulary Trainer — 完整版 style.css
+ *  - 主體置中，不會歪
+ *  - 側邊欄右上浮動（桌機），手機正常排列
+ * ============================================================ */
+
 /* === 基本排版 === */
 body {
   font-family: Arial, sans-serif;
@@ -8,13 +14,58 @@ body {
 }
 
 h1 {
-  margin-bottom: 25px;
+  margin: 32px 0 25px;
+  font-weight: bold;
+}
+
+/* === 側邊欄（Type 篩選） === */
+#type-sidebar {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  width: 220px;
+  margin: 0 auto 12px;
+  padding: 14px;
+  border: 1px solid #e3e7ef;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,.04);
+  font-size: 14px;
+}
+
+#type-sidebar h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+#type-filters label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+#type-reset {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #cfd6e6;
+  background: #f6f8fc;
+  cursor: pointer;
+  transition: background-color .2s, transform .1s;
+}
+
+#type-reset:hover {
+  background: #e9eef9;
+  transform: translateY(-1px);
 }
 
 /* === 卡片容器 === */
 #card {
-  width: 420px;
-  margin: 0 auto;
+  max-width: 480px;          /* 桌機不會太窄、手機自適應 */
+  width: 92vw;
+  margin: 0 auto;             /* 永遠置中 */
   padding: 25px;
   border: 2px solid #007bff;
   border-radius: 10px;
@@ -30,26 +81,66 @@ h1 {
   text-align: center;
 }
 
+/* === 課程篩選（晶片樣式） === */
+#lessonContainer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0;
+  text-align: left;
+}
+
+#lessonContainer .chip {
+  border: 1px solid #cfd6e6;
+  padding: 4px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  background: #f8fafc;
+  font-size: 13px;
+  transition: background-color .2s, border-color .2s, transform .1s;
+}
+
+#lessonContainer .chip:hover {
+  transform: translateY(-1px);
+}
+
+#lessonContainer .chip.active {
+  background: #e8f0ff;
+  border-color: #9bb7ff;
+}
+
 /* === 輸入區 === */
 #inputs {
-  margin: 15px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
   text-align: center;
 }
-#inputs input, #inputs select {
+
+#inputs input,
+#inputs select {
   margin: 6px 0;
   padding: 8px;
-  width: 85%;
+  width: 88%;
+  max-width: 360px;
   border: 1px solid #ccc;
   border-radius: 6px;
 }
 
 /* === 按鈕區 === */
 #controls {
-  text-align: center;
-  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
 }
 
-/* 讓按鈕之間有間距且樣式一致 */
 #controls button {
   margin: 6px 8px;
   padding: 8px 16px;
@@ -59,8 +150,8 @@ h1 {
   cursor: pointer;
   background-color: #007bff;
   color: white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-  transition: background-color 0.2s, transform 0.1s;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  transition: background-color .2s, transform .1s;
 }
 
 #controls button:hover {
@@ -82,12 +173,14 @@ h1 {
   font-weight: bold;
   font-size: 18px;
 }
+
 #feedback.correct {
   color: #155724;
   background: #d4edda;
   border-radius: 6px;
   padding: 6px 10px;
 }
+
 #feedback.incorrect {
   color: #721c24;
   background: #f8d7da;
@@ -95,67 +188,30 @@ h1 {
   padding: 6px 10px;
 }
 
-/* === 課程篩選 === */
-#lessonContainer {
-  text-align: left;
-  margin: 10px 0;
-}
-#lessonContainer label {
-  display: inline-block;
-  margin-right: 15px;
-  white-space: nowrap;
-}
-#lessonContainer input[type="checkbox"] {
-  margin-right: 5px;
-  vertical-align: middle;
-}
-/* 整張卡片固定寬度、置中 */
-#card{
-  max-width: 480px;     /* 稍微寬一點比較自然 */
-  width: 92vw;          /* 手機也能自適應 */
-  margin: 0 auto;       /* 置中 */
+/* === 響應式設定 === */
+@media (min-width: 960px) {
+  /* 桌機版：頁面置中，側欄固定右上角 */
+  body {
+    display: block;           /* 不要 grid，避免推偏 */
+  }
+  #type-sidebar {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    width: 260px;
+    margin: 0;
+    z-index: 1000;
+  }
 }
 
-/* 課程篩選：置中、一行排不下就自動換行 */
-#lessonContainer{
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center; /* 中間 */
-  gap: 8px;
-  margin: 10px 0;
-  text-align: left;        /* 讓 label 內容保持左對齊 */
+@media (max-width: 959.98px) {
+  /* 手機/平板版：側欄當上方卡片 */
+  body {
+    display: block;
+  }
+  #type-sidebar {
+    position: static;
+    width: auto;
+    margin: 0 10px 12px;
+  }
 }
-#lessonContainer label{
-  margin: 0;               /* 用 gap 管間距即可 */
-}
-
-/* 輸入區：欄位垂直堆疊、整體置中 */
-#inputs{
-  display: flex;
-  flex-direction: column;
-  align-items: center;   /* 置中 */
-  gap: 10px;
-  margin: 16px 0;
-}
-#inputs input, #inputs select{
-  width: 88%;
-  max-width: 360px;      /* 避免超寬 */
-}
-
-/* 按鈕列：橫向置中、必要時自動換行 */
-#controls{
-  display: flex;
-  justify-content: center;  /* 中間 */
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-/* 讓回饋文字也在中間看起來一致 */
-#feedback{
-  text-align: center;
-}
-
-
-
