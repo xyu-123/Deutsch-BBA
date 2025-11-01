@@ -18,6 +18,12 @@ window.vocabOther = [
     { type: 'adjective', deutsch: 'viel', chinese: '多', lesson: 'lesson 1' },
     { type: 'adjective', deutsch: 'wenig', chinese: '少', lesson: 'lesson 1' },
     { type: 'adjective', deutsch: 'international', chinese: '國際的', lesson: 'lesson 1' },
+    //lesson2
+    { type: 'adjective', deutsch: 'herzlich', chinese: '衷心的', lesson: 'lesson 2' },
+    { type: 'adjective', deutsch: 'willkommen', chinese: '受人歡迎的 令人高興的', lesson: 'lesson 2' },
+    { type: 'adjective', deutsch: 'typisch', chinese: '典型 具代表性的', lesson: 'lesson 2' },
+    { type: 'adjective', deutsch: 'sorry', chinese: '對不起 抱歉 遺憾的', lesson: 'lesson 2' },
+
 
 
     
@@ -41,6 +47,10 @@ window.vocabOther = [
 
     //lesson 2
     { type: 'adverb', deutsch: 'so', chinese: '如此 這樣', lesson: 'lesson 2' },
+    { type: 'adverb', deutsch: 'denn', chinese: '究竟 到底', lesson: 'lesson 2' },
+    { type: 'adverb', deutsch: 'herzlich', chinese: '非常 很', lesson: 'lesson 2' },
+    { type: 'adverb', deutsch: 'oft', chinese: '時常', lesson: 'lesson 2' },
+    { type: 'adverb', deutsch: 'nur', chinese: '僅僅 只', lesson: 'lesson 2' },
 
 // 疑問詞
 //{ type: 'question', deutsch: '', chinese: '', lesson: '' },
@@ -74,4 +84,13 @@ window.vocabOther = [
     { type: 'other', deutsch: 'sein', chinese: '他的', lesson: 'lesson 2' },
     { type: 'other', deutsch: 'man', chinese: '某人 任一人', lesson: 'lesson 2' },
     { type: 'other', deutsch: 'für', chinese: '對...而言 為了', lesson: 'lesson 2' },
+    { type: 'other', deutsch: 'bei', chinese: '在...附近 在...郊區', lesson: 'lesson 2' },
+    { type: 'other', deutsch: 'seit', chinese: '自...至今 到現在', lesson: 'lesson 2' },
+    { type: 'other', deutsch: 'mit', chinese: '有... 加... 和...', lesson: 'lesson 2' },
+
+
+
+
+
+// 特殊字符 Ä ä Ö ö Ü ü ß    
 ];
