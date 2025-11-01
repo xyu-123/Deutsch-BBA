@@ -679,7 +679,7 @@
       speakBtn.addEventListener('click', () => {
         const pool = filteredPool();
         const word = (currentIndex >= 0 && pool.length) ? (vocab[currentIndex] || pool[0]) : null;
-        speakDE(textForSpeak(word || pool[0]));
+        speakDE(textForSpeak(word || pool[0]), { force: true });
       });
 
       // 自動發音開關
