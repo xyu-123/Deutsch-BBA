@@ -17,5 +17,7 @@ window.vocabSec = [
     { type: 'phrase', deutsch: 'Keine Ahnung', chinese: '不知道', lesson: 'lesson 2' },
     { type: 'phrase', deutsch: 'Entschuldigung', chinese: '抱歉', lesson: 'lesson 2' },
     { type: 'phrase', deutsch: 'Vorsicht', chinese: '注意', lesson: 'lesson 2' },
+    { type: 'phrase', deutsch: 'Guten Morgen', chinese: '早安', lesson: 'lesson 2' },
+    { type: 'phrase', deutsch: 'es gibt', chinese: '有...', lesson: 'lesson 2' },
 
 ];
