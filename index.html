@@ -6,10 +6,16 @@
   <title>Deutsch Vocab Trainer</title>
   <meta name="format-detection" content="telephone=no" />
   <link rel="stylesheet" href="style.css" />
-
 </head>
 <body>
   <h1>Deutsch Vocabulary Trainer</h1>
+
+  <!-- === 側邊篩選欄（Type） === -->
+  <aside id="type-sidebar">
+    <h3>詞類 / 類型</h3>
+    <div id="type-filters"></div>
+    <button id="type-reset" type="button">全部</button>
+  </aside>
 
   <!-- 用 form 包起來；在 form 層就先關掉各種自動功能 -->
   <form id="quiz-form" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
@@ -47,10 +53,120 @@
   <script src="vocab_sec.js"></script>
   <script src="vocab_numbers.js"></script>
 
-  <!-- 合併成全域 vocabList -->
+  <!-- 合併成全域 vocabList（你原本的合併邏輯） -->
   <script src="vocab_merge.js"></script>
 
-  <!-- 主程式 -->
+  <!-- === 篩選模組（type + lesson；無痛兼容既有 script.js） === -->
+  <script>
+  (function(){
+    // ---- 小工具：去重 ----
+    const uniq = arr => Array.from(new Set(arr)).filter(Boolean);
+
+    // ---- 1) 讓 lesson 點選變成「可多選 chips」 ----
+    function buildLessonChips(){
+      const box = document.getElementById('lessonContainer');
+      if (!box) return;
+      // 從合併後的詞庫收集所有 lesson
+      const base = window._baseVocabList || window.vocabList || [];
+      const lessons = uniq(base.map(o => o.lesson).filter(Boolean)).sort();
+      // 清空後重建
+      box.innerHTML = '';
+      lessons.forEach(lsn => {
+        const chip = document.createElement('span');
+        chip.className = 'chip active';
+        chip.dataset.lesson = lsn;
+        chip.textContent = lsn;
+        chip.addEventListener('click', () => {
+          chip.classList.toggle('active');
+          dispatchFiltersChanged();
+        });
+        box.appendChild(chip);
+      });
+    }
+
+    // ---- 2) 建立 type 側邊 checkbox ----
+    function buildTypeSidebar(){
+      const box = document.getElementById('type-filters');
+      if (!box) return;
+      const base = window._baseVocabList || window.vocabList || [];
+      const types = uniq(base.map(o => o.type)).sort();
+      box.innerHTML = '';
+      types.forEach(t => {
+        const id = 'type_' + t.replace(/\W+/g,'_');
+        const label = document.createElement('label');
+        label.innerHTML = `<input type="checkbox" id="${id}" value="${t}" checked> <span>${t}</span>`;
+        box.appendChild(label);
+      });
+      // 全部按鈕
+      const resetBtn = document.getElementById('type-reset');
+      if (resetBtn){
+        resetBtn.onclick = () => {
+          box.querySelectorAll('input[type=checkbox]').forEach(ch => ch.checked = true);
+          dispatchFiltersChanged();
+        };
+      }
+      // 監聽任意變更
+      box.addEventListener('change', dispatchFiltersChanged);
+    }
+
+    // ---- 3) 取得目前啟用的 lesson / type ----
+    function getActiveLessons(){
+      const chips = Array.from(document.querySelectorAll('#lessonContainer .chip.active'));
+      return chips.map(c => c.dataset.lesson);
+    }
+    function getActiveTypes(){
+      const checks = Array.from(document.querySelectorAll('#type-filters input[type=checkbox]:checked'));
+      return checks.map(c => c.value);
+    }
+
+    // ---- 4) 依勾選條件回傳過濾後的詞庫 ----
+    function getFilteredVocab(){
+      const src = window._baseVocabList || window.vocabList || [];
+      const ls = new Set(getActiveLessons());
+      const ts = new Set(getActiveTypes());
+      return src.filter(o => (!ls.size || ls.has(o.lesson)) && (!ts.size || ts.has(o.type)));
+    }
+
+    // ---- 5) 對外派發事件：需要時 script.js 可監聽 ----
+    function dispatchFiltersChanged(){
+      window.vocabListFiltered = getFilteredVocab();
+      document.dispatchEvent(new CustomEvent('vocab-filter-change', {
+        detail: { size: window.vocabListFiltered.length }
+      }));
+    }
+
+    // ---- 6) 把 vocabList 變成「動態 getter」 ----
+    // 先存下原始合併結果
+    if (!window._baseVocabList) {
+      window._baseVocabList = Array.isArray(window.vocabList) ? window.vocabList.slice() : [];
+    }
+    // 用 getter 讓任何讀取 window.vocabList 的地方，拿到的是過濾後集合
+    try {
+      Object.defineProperty(window, 'vocabList', {
+        configurable: true,
+        get(){
+          if (!window.vocabListFiltered) return window._baseVocabList;
+          return window.vocabListFiltered;
+        }
+      });
+    } catch (e) {
+      // 退路：同步一份可用變數
+      window.vocabListFiltered = window._baseVocabList.slice();
+    }
+
+    // ---- 7) 初始化 ----
+    document.addEventListener('DOMContentLoaded', () => {
+      buildLessonChips();
+      buildTypeSidebar();
+      dispatchFiltersChanged();
+    });
+
+    // ---- 8) 公開 API（可選）----
+    window.getFilteredVocab = getFilteredVocab;
+  })();
+  </script>
+
+  <!-- 主程式（沿用你的既有出題邏輯） -->
   <script src="script.js"></script>
 </body>
 </html>
