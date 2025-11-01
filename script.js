@@ -1,11 +1,12 @@
 /* ==========================================================================
- *  Quiz App (Stable & Clean Single File) + TTS (de-DE) + Type/Lesson Filters
+ *  Quiz App + TTS (de-DE) + Type/Lesson Filters (FINAL)
  *  - iOS/Safari proof: block Enter/NumpadEnter, disable autocorrect/capitalize
  *  - Token-locked nextWord()
  *  - MutationObserver-safe with de-dup (dataset.hardened)
  *  - TTS: German voice pick, autoplay toggle, speak button
  *  - Type sidebar + Lesson chips (multi-select); pool 即時過濾
- *  - All bindings after DOMContentLoaded; null-safe; no global leaks
+ *  - 動詞題固定四欄：Infinitiv + ich + du + er（不再隨機）
+ *  - 顯示答案 / 答錯：一律強制發音（不受自動發音開關影響）
  * ========================================================================== */
 (() => {
   'use strict';
@@ -14,7 +15,7 @@
   // State
   // -----------------------------
   const BASE = Array.isArray(window.vocabList) ? window.vocabList.slice() : [];
-  let vocab = BASE.slice();       // 仍保留，但實際抽題用 filter 後的 pool
+  let vocab = BASE.slice();
   let currentIndex = -1;
   let correctConfirmed = false;
   let currentErrors = [];
@@ -25,7 +26,7 @@
   // -----------------------------
   // Utils
   // -----------------------------
-  const $ = sel => document.querySelector(sel);
+  const $  = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
   const uniq = arr => Array.from(new Set(arr)).filter(Boolean);
 
@@ -41,23 +42,15 @@
     s = s.replace(/a:/g, 'ae').replace(/o:/g, 'oe').replace(/u:/g, 'ue');
     return s;
   }
-
-  function foldPhrase(s) {
-    return normalizeGerman(s).replace(/[^a-z]/g, '');
-  }
-
-  function isBlankRequired(el) {
-    if (!el) return true;
-    const v = el.value != null ? String(el.value) : '';
-    return normalizeGerman(v) === '';
-  }
+  const foldPhrase = s => normalizeGerman(s).replace(/[^a-z]/g, '');
+  const isBlankRequired = el => !el || normalizeGerman(String(el.value ?? '')) === '';
 
   function saveVocab() {
     try { localStorage.setItem('vocab', JSON.stringify(vocab)); } catch {}
   }
 
   // -----------------------------
-  // TTS（德文發音）模組
+  // TTS（德文發音）
   // -----------------------------
   const TTS = { enabled: false, voice: null, rate: 1.0, pitch: 1.0, ready: false };
 
@@ -75,7 +68,6 @@
       null
     );
   }
-
   function initTTS() {
     if (!('speechSynthesis' in window)) return;
     const synth = window.speechSynthesis;
@@ -90,7 +82,6 @@
       synth.getVoices?.();
     }
   }
-
   function speakDE(text, opts = {}) {
     const force = opts.force === true;
     if ((!TTS.enabled && !force) || !text) return;
@@ -104,14 +95,13 @@
     u.pitch = TTS.pitch;
     synth.speak(u);
   }
-
   function textForSpeak(word) {
     if (!word) return '';
     if (word.type === 'noun') {
       const art = (word.gender === 'der' || word.gender === 'die' || word.gender === 'das') ? word.gender : '';
       return [art, word.deutsch].filter(Boolean).join(' ');
     }
-    if (word.type === 'verb') return word.infinitiv || word.deutsch || '';
+    if (word.type === 'verb')   return word.infinitiv || word.deutsch || '';
     if (word.type === 'number') return word.deutsch || String(word.number);
     return word.deutsch || '';
   }
@@ -121,7 +111,7 @@
   // -----------------------------
   function hardenInput(el) {
     if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
-    if (el.dataset.hardened === '1') return; // 去重
+    if (el.dataset.hardened === '1') return;
     el.dataset.hardened = '1';
 
     el.autocomplete = 'off';
@@ -131,19 +121,15 @@
     el.inputMode = 'text';
     el.enterKeyHint = 'done';
 
-    // 避免被 Safari 當成特殊欄位
     if (!el.name || /^(email|username|name)$/i.test(el.name)) {
       el.name = 'ans_' + Math.random().toString(36).slice(2);
     }
-
-    // 阻止 Enter / NumpadEnter 造成預設提交或跳題
     el.addEventListener('keydown', ev => {
       if ((ev.key === 'Enter' || ev.key === 'NumpadEnter') && !ev.ctrlKey && !ev.metaKey) {
         ev.preventDefault();
       }
     }, { passive: false });
   }
-
   function hardenInputsIn(container = document) {
     container.querySelectorAll('#inputs input, #inputs textarea').forEach(hardenInput);
   }
@@ -161,19 +147,15 @@
       chip.className = 'chip active';
       chip.dataset.lesson = lsn;
       chip.textContent = lsn;
-      chip.addEventListener('click', () => {
-        chip.classList.toggle('active');
-        onFiltersChanged();
-      });
+      chip.addEventListener('click', () => { chip.classList.toggle('active'); onFiltersChanged(); });
       box.appendChild(chip);
     });
   }
 
-  // ✅ 全選 / 全不選：第一次點「全部」→ 取消全選；第二次點 → 全選
+  // 「全部↔全選」切換：第一次點→全不選；第二次點→全選
   function buildTypeSidebar() {
     const box = $('#type-filters');
     if (!box) return;
-
     const types = uniq(BASE.map(o => o.type).filter(Boolean)).sort();
     box.innerHTML = '';
     types.forEach(t => {
@@ -182,89 +164,61 @@
       label.innerHTML = `<input type="checkbox" id="${id}" value="${t}"> <span>${t}</span>`;
       box.appendChild(label);
     });
-
-    // 初始：全部勾選
+    // 初始全選
     box.querySelectorAll('input[type=checkbox]').forEach(ch => ch.checked = true);
 
     const resetBtn = $('#type-reset');
     if (resetBtn) {
-      // 用 dataset.mode 控制下一次點擊的行為：'all' 代表目前為全選狀態，下次點要「全不選」
-      resetBtn.dataset.mode = 'all';
-      resetBtn.textContent = '全部'; // 顯示文字
-
+      resetBtn.dataset.mode = 'all';      // 現在是全選狀態
+      resetBtn.textContent   = '全部';
       resetBtn.onclick = () => {
         const boxes = box.querySelectorAll('input[type=checkbox]');
-        const mode = resetBtn.dataset.mode;
-
-        if (mode === 'all') {
-          // 目前全選 → 取消全選
+        if (resetBtn.dataset.mode === 'all') {
           boxes.forEach(b => b.checked = false);
           resetBtn.dataset.mode = 'none';
-          resetBtn.textContent = '全選';
+          resetBtn.textContent  = '全選';
         } else {
-          // 目前全不選 → 全選
           boxes.forEach(b => b.checked = true);
           resetBtn.dataset.mode = 'all';
-          resetBtn.textContent = '全部';
+          resetBtn.textContent  = '全部';
         }
         onFiltersChanged();
       };
     }
-
-    // 任一勾選變更時，同步按鈕文字與狀態
+    // 任一變化時同步按鈕文字
     box.addEventListener('change', () => {
       const boxes = Array.from(box.querySelectorAll('input[type=checkbox]'));
       const allChecked = boxes.every(b => b.checked);
       if (resetBtn) {
-        if (allChecked) {
-          resetBtn.dataset.mode = 'all';
-          resetBtn.textContent = '全部';
-        } else {
-          resetBtn.dataset.mode = 'none';
-          resetBtn.textContent = '全選';
-        }
+        resetBtn.dataset.mode = allChecked ? 'all' : 'none';
+        resetBtn.textContent  = allChecked ? '全部' : '全選';
       }
       onFiltersChanged();
     });
   }
 
-  function getActiveLessons() {
-    return Array.from(document.querySelectorAll('#lessonContainer .chip.active'))
-      .map(c => c.dataset.lesson);
-  }
-
-  function getActiveTypes() {
-    return Array.from(document.querySelectorAll('#type-filters input[type=checkbox]:checked'))
-      .map(c => c.value);
-  }
+  const getActiveLessons = () =>
+    Array.from(document.querySelectorAll('#lessonContainer .chip.active')).map(c => c.dataset.lesson);
+  const getActiveTypes   = () =>
+    Array.from(document.querySelectorAll('#type-filters input[type=checkbox]:checked')).map(c => c.value);
 
   function filteredPool() {
     const ls = new Set(getActiveLessons());
     const ts = new Set(getActiveTypes());
     let pool = BASE.filter(w => (!ls.size || ls.has(w.lesson)) && (!ts.size || ts.has(w.type)));
-    // 若完全未選任何 lesson（ls.size === 0），則可選擇排除 Numbers
-    if (!ls.size) {
-      pool = pool.filter(w => (w.lesson || '') !== 'Numbers');
-    }
-    if (pool.length === 0) {
-      // 保底：至少不要只剩 Numbers
-      pool = BASE.filter(w => (w.lesson || '') !== 'Numbers' && (!ts.size || ts.has(w.type)));
-    }
+    if (!ls.size) pool = pool.filter(w => (w.lesson || '') !== 'Numbers'); // 未選課程時排除 Numbers
+    if (!pool.length) pool = BASE.filter(w => (w.lesson || '') !== 'Numbers' && (!ts.size || ts.has(w.type)));
     return pool;
   }
-
   function onFiltersChanged() {
-    // 這裡保留給未來顯示計數等用途
-    // 例如：document.title = `題庫可抽：${filteredPool().length}`;
+    // 可加上顯示可抽題數等
+    // document.title = `可抽題數：${filteredPool().length}`;
   }
 
   // -----------------------------
   // Token-locked Next
   // -----------------------------
-  function safeNext() {
-    advanceToken += 1;
-    nextWord(advanceToken);
-  }
+  function safeNext() { advanceToken += 1; nextWord(advanceToken); }
 
   // -----------------------------
   // Build/Show Answers
@@ -286,9 +240,7 @@
       }
     } else if (word.type === 'verb') {
       if (word.infinitiv) list.push(`原形：${word.infinitiv}`);
-      for (const f of ['ich','du','er','wir','ihr','sie']) {
-        if (word[f]) list.push(`${f}：${word[f]}`);
-      }
+      for (const f of ['ich','du','er','wir','ihr','sie']) if (word[f]) list.push(`${f}：${word[f]}`);
     } else if (word.type === 'country') {
       if (word.deutsch) list.push(`德文：${word.deutsch}`);
       if (word.countable) list.push(`單複數：${word.plural ? '複數' : '單數'}`);
@@ -319,8 +271,9 @@
     nextBtn.disabled = false;
     showBtn.style.display = 'none';
 
-    const wordForTTS2 = vocab[currentIndex];
-    speakDE(textForSpeak(wordForTTS2));
+    // 顯示答案時強制發音
+    const wordForTTS2 = (currentIndex >= 0 ? vocab[currentIndex] : null);
+    speakDE(textForSpeak(wordForTTS2), { force: true });
   }
 
   function dontKnow() {
@@ -369,7 +322,7 @@
   // nextWord (token-protected)
   // -----------------------------
   function nextWord(token) {
-    if (token !== advanceToken) return; // 無令牌不換題
+    if (token !== advanceToken) return;
 
     correctConfirmed = false;
     const showBtn = $('#showAnswer');
@@ -378,7 +331,7 @@
     const nextBtn = $('#next');
     if (nextBtn) nextBtn.disabled = true;
 
-    // 依「lesson chips + type 勾選」動態取得 pool
+    // 依目前篩選取得 pool
     const pool = filteredPool();
     if (!pool.length) {
       const translationDiv = $('#translation');
@@ -389,7 +342,7 @@
 
     const chosen = pool[Math.floor(Math.random() * pool.length)];
     currentIndex = vocab.indexOf(chosen);
-    if (currentIndex < 0) currentIndex = BASE.indexOf(chosen); // 保底
+    if (currentIndex < 0) currentIndex = BASE.indexOf(chosen);
 
     const translationDiv = $('#translation');
     if (translationDiv) {
@@ -414,22 +367,14 @@
         <input type="text" id="pluralInput" placeholder="複數形${chosen.countable ? '' : ' (不可數，無需填寫)'}" ${chosen.countable ? 'required' : 'readonly'}>
       `;
     } else if (chosen.type === 'verb') {
-      const forms = ['ich','du','er','wir','ihr','sie'];
-      const hinttext = ['ich','du','er/es/sie','wir','ihr','sie/Sie'];
-      const selected = [];
-      const placeholderselected = [];
-      while (selected.length < 2) {
-        const idx = Math.floor(Math.random() * forms.length);
-        if (!selected.includes(forms[idx])) {
-          selected.push(forms[idx]);
-          placeholderselected.push(hinttext[idx]);
-        }
-      }
-      chosen.selectedForms = selected;
+      // 固定四欄：Infinitiv + ich + du + er（不再隨機）
+      chosen.selectedForms = ['ich', 'du', 'er'];
+      const placeholders = ['ich', 'du', 'er/es/sie'];
       html = `
         <input type="text" id="infinitivInput" placeholder="原形 (Infinitiv)${chosen.hint ? ' (提示：' + chosen.hint + ')' : ''}" required>
-        <input type="text" id="${selected[0]}Input" placeholder="${placeholderselected[0]}" required>
-        <input type="text" id="${selected[1]}Input" placeholder="${placeholderselected[1]}" required>
+        <input type="text" id="ichInput"  placeholder="${placeholders[0]}" required>
+        <input type="text" id="duInput"   placeholder="${placeholders[1]}" required>
+        <input type="text" id="erInput"   placeholder="${placeholders[2]}" required>
       `;
     } else if (chosen.type === 'country') {
       if (chosen.countable) {
@@ -471,9 +416,8 @@
       feedback.className = '';
     }
 
-    // 出題後自動發音
-    const wordForTTS = chosen;
-    speakDE(textForSpeak(wordForTTS));
+    // 出題後依「自動發音」設定播放
+    speakDE(textForSpeak(chosen));
   }
 
   // -----------------------------
@@ -510,11 +454,9 @@
     } else if (word.type === 'verb') {
       const ii = $('#infinitivInput');
       if (isBlankRequired(ii)) missing.push('原形(Infinitiv)');
-      if (Array.isArray(word.selectedForms)) {
-        for (const f of word.selectedForms) {
-          const el = $('#' + f + 'Input');
-          if (isBlankRequired(el)) missing.push(f);
-        }
+      for (const f of (word.selectedForms || [])) {
+        const el = $('#' + f + 'Input');
+        if (isBlankRequired(el)) missing.push(f);
       }
     } else if (word.type === 'country') {
       const di = $('#deutschInput');
@@ -541,60 +483,47 @@
       const deutschInput = normalizeGerman(($('#deutschInput') || {}).value?.trim() ?? '');
       const pluralInput  = normalizeGerman((($('#pluralInput') || {}).value ?? '').trim());
 
-      const correctGender  = word.gender || 'none';
-      const correctDeutsch = normalizeGerman(word.deutsch || '');
-      const correctPlural  = normalizeGerman(word.plural || '');
+      const correctGender    = word.gender || 'none';
+      const correctDeutsch   = normalizeGerman(word.deutsch || '');
+      const correctPlural    = normalizeGerman(word.plural || '');
       const correctPluralAlt = normalizeGerman(word.Pl || '');
 
-      if (correctGender !== 'none' && genderInput !== correctGender) {
-        currentErrors.push(`性別：${correctGender}`);
-      }
-      if (deutschInput !== correctDeutsch) {
-        currentErrors.push(`德文：${word.deutsch}`);
-      }
+      if (correctGender !== 'none' && genderInput !== correctGender) currentErrors.push(`性別：${correctGender}`);
+      if (deutschInput !== correctDeutsch)                         currentErrors.push(`德文：${word.deutsch}`);
       if (word.countable) {
         const okPlural = pluralInput === correctPlural || (word.Pl !== undefined && pluralInput === correctPluralAlt);
         if (!okPlural) {
-          const pluralAnswers = [word.plural];
-          if (word.Pl) pluralAnswers.push(word.Pl);
+          const pluralAnswers = [word.plural]; if (word.Pl) pluralAnswers.push(word.Pl);
           currentErrors.push(`複數：${pluralAnswers.join(' 或 ')}`);
         }
       }
-
     } else if (word.type === 'verb') {
-      const infinitivInput = normalizeGerman(($('#infinitivInput') || {}).value?.trim() ?? '');
+      const infinitivInput  = normalizeGerman(($('#infinitivInput') || {}).value?.trim() ?? '');
       const correctInfinitiv = normalizeGerman(word.infinitiv || '');
       if (infinitivInput !== correctInfinitiv) currentErrors.push(`原形：${word.infinitiv}`);
 
-      if (Array.isArray(word.selectedForms)) {
-        for (const form of word.selectedForms) {
-          const input  = normalizeGerman((($('#' + form + 'Input') || {}).value ?? '').trim());
-          const correct = normalizeGerman(word[form] || '');
-          if (input !== correct) currentErrors.push(`${form}：${word[form]}`);
-        }
+      for (const form of (word.selectedForms || [])) {
+        const input   = normalizeGerman((($('#' + form + 'Input') || {}).value ?? '').trim());
+        const correct = normalizeGerman(word[form] || '');
+        if (input !== correct) currentErrors.push(`${form}：${word[form]}`);
       }
-
     } else if (word.type === 'country') {
       const deutschInput = normalizeGerman(($('#deutschInput') || {}).value?.trim() ?? '');
       const correctDeutsch = normalizeGerman(word.deutsch || '');
       if (deutschInput !== correctDeutsch) currentErrors.push(`德文：${word.deutsch}`);
-
       if (word.countable) {
         const numberSelected = ($('#numberInput') || {}).value;
         const should = word.plural ? 'plural' : 'singular';
         if (numberSelected !== should) currentErrors.push(`單複數：${word.plural ? '複數' : '單數'}`);
       }
-
     } else if (word.type === 'phrase') {
       const input  = foldPhrase((($('#deutschInput') || {}).value ?? ''));
       const answer = foldPhrase(word.deutsch || '');
       if (input !== answer) currentErrors.push(`德文：${word.deutsch}`);
-
     } else if (word.type === 'number') {
       const inp  = normalizeGerman((($('#deutschInput') || {}).value ?? '').trim());
       const main = normalizeGerman(word.deutsch || '');
       if (inp !== main) currentErrors.push(`數字 ${word.number} 的正確德文：${word.deutsch}`);
-
     } else if (SINGLE_INPUT_TYPES.has(word.type)) {
       const deutschInput = normalizeGerman((($('#deutschInput') || {}).value ?? '').trim());
       const correctDeutsch = normalizeGerman(word.deutsch || '');
@@ -614,6 +543,8 @@
       feedback.className = 'incorrect';
       showBtn.style.display = 'block';
       nextBtn.disabled = true;
+      // 答錯時強制發音
+      speakDE(textForSpeak(word), { force: true });
     }
 
     saveVocab();
@@ -626,23 +557,17 @@
     const quizForm = $('#quiz-form');
     if (quizForm) {
       quizForm.addEventListener('submit', e => e.preventDefault());
-      // 最後一道牆：表單層攔 Enter / NumpadEnter
       quizForm.addEventListener('keydown', e => {
-        if ((e.key === 'Enter' || e.key === 'NumpadEnter') && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-          e.preventDefault();
-        }
+        if ((e.key === 'Enter' || e.key === 'NumpadEnter') && !e.ctrlKey && !e.metaKey && !e.shiftKey) e.preventDefault();
       }, { passive: false });
       quizForm.setAttribute('novalidate', 'novalidate');
       quizForm.setAttribute('autocomplete', 'off');
     }
 
     // 明確標示按鈕為非 submit
-    ['next','check','showAnswer','dontKnow'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn) btn.setAttribute('type', 'button');
-    });
+    ['next','check','showAnswer','dontKnow'].forEach(id => document.getElementById(id)?.setAttribute('type','button'));
 
-    // 綁定按鈕（存在才綁）
+    // 綁定按鈕
     $('#next')?.addEventListener('click', safeNext);
     $('#check')?.addEventListener('click', checkAnswer);
     $('#showAnswer')?.addEventListener('click', showAnswer);
@@ -656,21 +581,20 @@
       mo.observe(box, { childList: true, subtree: true });
     }
 
-    // ---- 建立篩選 UI ----
+    // 篩選 UI
     buildLessonChips();
-    buildTypeSidebar();  // ← 已含自動「全選」及「全部↔全選」切換
+    buildTypeSidebar();
 
-    // --- 初始化 TTS，並在首次互動時確保可用（iOS 友善） ---
+    // TTS 初始化 & 解鎖
     initTTS();
     ['click','touchstart','keydown'].forEach(ev =>
       document.addEventListener(ev, initTTS, { once: true, passive: true })
     );
 
-    // --- 建立「🔊 發音」按鈕與「自動發音」開關 ---
+    // 「🔊 發音」按鈕 + 「自動發音」開關
     (function mountSpeakControls(){
       const controls = document.getElementById('controls') || document.body;
 
-      // 發音按鈕
       const speakBtn = document.createElement('button');
       speakBtn.id = 'speakBtn';
       speakBtn.type = 'button';
@@ -678,11 +602,10 @@
       speakBtn.style.marginLeft = '8px';
       speakBtn.addEventListener('click', () => {
         const pool = filteredPool();
-        const word = (currentIndex >= 0 && pool.length) ? (vocab[currentIndex] || pool[0]) : null;
-        speakDE(textForSpeak(word || pool[0]), { force: true });
+        const word = (currentIndex >= 0 && pool.length) ? (vocab[currentIndex] || pool[0]) : pool[0];
+        speakDE(textForSpeak(word), { force: true });
       });
 
-      // 自動發音開關
       const toggleWrap = document.createElement('label');
       toggleWrap.style.marginLeft = '8px';
       toggleWrap.style.userSelect = 'none';
@@ -703,7 +626,7 @@
       }
     })();
 
-    // 起題（若 pool 空，nextWord 會顯示提示）
+    // 起題
     safeNext();
   });
 })();
