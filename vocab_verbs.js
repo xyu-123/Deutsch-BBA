@@ -26,7 +26,7 @@ window.vocabVerbs = [
     { type: 'verb', infinitiv: 'sagen', ich: 'sage', du: 'sagst', er: 'sagt', wir: 'sagen', ihr: 'sagt', sie: 'sagen', chinese: '說... 講...', lesson: 'lesson 2' },
     { type: 'verb', infinitiv: 'haben', ich: 'habe', du: 'hast', er: 'hat', wir: 'haben', ihr: 'habt', sie: 'haben', chinese: '有...', lesson: 'lesson 2' },
     { type: 'verb', infinitiv: 'mögen', ich: 'mag', du: 'magst', er: 'mag', wir: 'mögen', ihr: 'mögt', sie: 'mögen', chinese: '喜歡...', lesson: 'lesson 2' },
-    { type: 'verb', infinitiv: 'spielen', ich: 'spiele', du: 'spielst', er: 'spielt', wir: 'spielen', ihr: 'spielt', sie: 'spielen', chinese: '玩... 踢...（球） 演奏...', lesson: 'lesson ' },
+    { type: 'verb', infinitiv: 'spielen', ich: 'spiele', du: 'spielst', er: 'spielt', wir: 'spielen', ihr: 'spielt', sie: 'spielen', chinese: '玩... 踢...（球） 演奏...', lesson: 'lesson 2' },
 
 
 // { type: 'verb', infinitiv: '', ich: '', du: '', er: '', wir: '', ihr: '', sie: '', chinese: '', lesson: 'lesson ' },
